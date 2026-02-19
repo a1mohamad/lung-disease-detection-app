@@ -1,0 +1,117 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+    ports:
+      - "${DB_PORT:-1433}:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  db-init:
+    image: mcr.microsoft.com/mssql-tools
+    depends_on:
+      - db
+    volumes:
+      - ./db/init:/db/init
+    entrypoint: >
+      /bin/bash -c "until /opt/mssql-tools/bin/sqlcmd -S db -U sa -P ${MSSQL_SA_PASSWORD} -i /db/init/create_databases.sql; do sleep 5; done"
+
+  app:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      TF_CPP_MIN_LOG_LEVEL: "${TF_CPP_MIN_LOG_LEVEL:-3}"
+      TF_ENABLE_ONEDNN_OPTS: "${TF_ENABLE_ONEDNN_OPTS:-0}"
+      DB_HOST: "${DB_HOST:-db}"
+      DB_PORT: "${DB_PORT:-1433}"
+      DB_NAME: "${DB_NAME:-lung_detection}"
+      DB_USER: "${DB_USER:-sa}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DRIVER: "${DB_DRIVER:-ODBC Driver 18 for SQL Server}"
+      DB_ENCRYPT: "${DB_ENCRYPT:-no}"
+      DB_TRUST_SERVER_CERTIFICATE: "${DB_TRUST_SERVER_CERTIFICATE:-yes}"
+      DB_LOGGING_ENABLED: "true"
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      MLFLOW_ENABLED: "${MLFLOW_ENABLED:-true}"
+      MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
+      MLFLOW_MODEL_STAGE: "${MLFLOW_MODEL_STAGE:-Production}"
+    volumes:
+      - ./saved_models:/app/saved_models
+      - ./assets:/app/assets
+      - ./runtime:/app/runtime
+
+  consumer_db:
+    build: .
+    depends_on:
+      - db
+    environment:
+      DB_HOST: "${DB_HOST:-db}"
+      DB_PORT: "${DB_PORT:-1433}"
+      DB_NAME: "${DB_NAME:-lung_detection}"
+      DB_USER: "${DB_USER:-sa}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DRIVER: "${DB_DRIVER:-ODBC Driver 18 for SQL Server}"
+      DB_ENCRYPT: "${DB_ENCRYPT:-no}"
+      DB_TRUST_SERVER_CERTIFICATE: "${DB_TRUST_SERVER_CERTIFICATE:-yes}"
+      DB_LOGGING_ENABLED: "true"
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_DB: "${KAFKA_GROUP_DB:-lung-consumer-db}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_db"]
+    volumes:
+      - ./runtime:/app/runtime
+
+  consumer_monitoring:
+    build: .
+    environment:
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_MONITORING: "${KAFKA_GROUP_MONITORING:-lung-consumer-monitoring}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_monitoring"]
+    volumes:
+      - ./runtime:/app/runtime
+
+  consumer_analytics:
+    build: .
+    environment:
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_ANALYTICS: "${KAFKA_GROUP_ANALYTICS:-lung-consumer-analytics}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_analytics"]
+    volumes:
+      - ./runtime:/app/runtime
+
+  consumer_doctor:
+    build: .
+    environment:
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_DOCTOR: "${KAFKA_GROUP_DOCTOR:-lung-consumer-doctor}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_doctor_images"]
+    volumes:
+      - ./runtime:/app/runtime
+
+  consumer_notifications:
+    build: .
+    environment:
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_NOTIFICATIONS: "${KAFKA_GROUP_NOTIFICATIONS:-lung-consumer-notifications}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_notifications"]
+    volumes:
+      - ./runtime:/app/runtime
+
+volumes:
+  mssql_data:
