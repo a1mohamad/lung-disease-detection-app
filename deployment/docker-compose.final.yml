@@ -1,0 +1,211 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+    ports:
+      - "${DB_PORT:-1433}:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  db-init:
+    image: mcr.microsoft.com/mssql-tools
+    depends_on:
+      - db
+    volumes:
+      - ./db/init:/db/init
+    entrypoint: >
+      /bin/bash -c "until /opt/mssql-tools/bin/sqlcmd -S db -U sa -P ${MSSQL_SA_PASSWORD} -i /db/init/create_databases.sql; do sleep 5; done"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:${KAFKA_IMAGE_TAG:-7.6.1}
+    environment:
+      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT:-2181}
+      ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME:-2000}
+    ports:
+      - "${ZOOKEEPER_CLIENT_PORT:-2181}:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:${KAFKA_IMAGE_TAG:-7.6.1}
+    depends_on:
+      - zookeeper
+    ports:
+      - "${KAFKA_EXTERNAL_PORT:-9092}:9092"
+    environment:
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:${ZOOKEEPER_CLIENT_PORT:-2181}
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${KAFKA_EXTERNAL_PORT:-9092}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:${KAFKA_UI_IMAGE_TAG:-v0.7.2}
+    depends_on:
+      - kafka
+    ports:
+      - "${KAFKA_UI_PORT:-8081}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ${KAFKA_UI_CLUSTER_NAME:-local}
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+
+  mlflow:
+    build: ./mlops/mlflow
+    depends_on:
+      - db
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: "${MLFLOW_BACKEND_STORE_URI}"
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: "${MLFLOW_DEFAULT_ARTIFACT_ROOT:-/mlflow/artifacts}"
+    volumes:
+      - ./mlops/mlflow/artifacts:/mlflow/artifacts
+
+  airflow:
+    build:
+      context: ./mlops
+      dockerfile: airflow/Dockerfile
+    depends_on:
+      - mlflow
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__EXECUTOR: "SequentialExecutor"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "sqlite:////opt/airflow/airflow.db"
+      MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
+      PROJECT_ROOT: "/opt/project"
+      PYTHONPATH: "/opt/project/deployment"
+    volumes:
+      - ./mlops/airflow/dags:/opt/airflow/dags
+      - ./:/opt/project
+    command: >
+      bash -c "airflow db migrate && \
+               airflow users create --username ${AIRFLOW_ADMIN_USER:-admin} --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Admin --lastname User --role Admin --email ${AIRFLOW_ADMIN_EMAIL:-admin@example.com} || true && \
+               airflow webserver & airflow scheduler"
+
+  post_hoc_backfill:
+    build:
+      context: ./mlops
+      dockerfile: airflow/Dockerfile
+    profiles: ["manual"]
+    environment:
+      MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
+      PYTHONPATH: "/opt/project/deployment"
+    volumes:
+      - ./:/opt/project
+    depends_on:
+      - mlflow
+    command: >
+      bash -c "python /opt/project/deployment/mlops/jobs/post_hoc_backfill.py --register-model"
+
+  app:
+    build: .
+    depends_on:
+      - kafka
+      - db
+      - mlflow
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      TF_CPP_MIN_LOG_LEVEL: "${TF_CPP_MIN_LOG_LEVEL:-3}"
+      TF_ENABLE_ONEDNN_OPTS: "${TF_ENABLE_ONEDNN_OPTS:-0}"
+      DB_HOST: "${DB_HOST:-db}"
+      DB_PORT: "${DB_PORT:-1433}"
+      DB_NAME: "${DB_NAME:-lung_detection}"
+      DB_USER: "${DB_USER:-sa}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DRIVER: "${DB_DRIVER:-ODBC Driver 18 for SQL Server}"
+      DB_ENCRYPT: "${DB_ENCRYPT:-no}"
+      DB_TRUST_SERVER_CERTIFICATE: "${DB_TRUST_SERVER_CERTIFICATE:-yes}"
+      DB_LOGGING_ENABLED: "true"
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      MLFLOW_ENABLED: "true"
+      MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
+      MLFLOW_MODEL_STAGE: "${MLFLOW_MODEL_STAGE:-Production}"
+    volumes:
+      - ./saved_models:/app/saved_models
+      - ./assets:/app/assets
+      - ./runtime:/app/runtime
+
+  consumer_db:
+    build: .
+    depends_on:
+      - kafka
+      - db
+    environment:
+      DB_HOST: "${DB_HOST:-db}"
+      DB_PORT: "${DB_PORT:-1433}"
+      DB_NAME: "${DB_NAME:-lung_detection}"
+      DB_USER: "${DB_USER:-sa}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_DRIVER: "${DB_DRIVER:-ODBC Driver 18 for SQL Server}"
+      DB_ENCRYPT: "${DB_ENCRYPT:-no}"
+      DB_TRUST_SERVER_CERTIFICATE: "${DB_TRUST_SERVER_CERTIFICATE:-yes}"
+      DB_LOGGING_ENABLED: "true"
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_DB: "${KAFKA_GROUP_DB:-lung-consumer-db}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_db"]
+    volumes:
+      - ./runtime:/app/runtime
+
+  consumer_monitoring:
+    build: .
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_MONITORING: "${KAFKA_GROUP_MONITORING:-lung-consumer-monitoring}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_monitoring"]
+    volumes:
+      - ./runtime:/app/runtime
+
+  consumer_analytics:
+    build: .
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_ANALYTICS: "${KAFKA_GROUP_ANALYTICS:-lung-consumer-analytics}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_analytics"]
+    volumes:
+      - ./runtime:/app/runtime
+
+  consumer_doctor:
+    build: .
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_DOCTOR: "${KAFKA_GROUP_DOCTOR:-lung-consumer-doctor}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_doctor_images"]
+    volumes:
+      - ./runtime:/app/runtime
+
+  consumer_notifications:
+    build: .
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_ENABLED: "${KAFKA_ENABLED:-true}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}"
+      KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
+      KAFKA_GROUP_NOTIFICATIONS: "${KAFKA_GROUP_NOTIFICATIONS:-lung-consumer-notifications}"
+    command: ["python", "-m", "kafka_pipeline.consumers.consumer_notifications"]
+    volumes:
+      - ./runtime:/app/runtime
+
+volumes:
+  mssql_data:
