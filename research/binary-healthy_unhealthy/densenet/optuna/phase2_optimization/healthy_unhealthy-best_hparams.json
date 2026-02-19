@@ -1,0 +1,27 @@
+{
+  "best_trial_number": 10,
+  "best_value": 0.8967769437770365,
+  "best_hparams": {
+    "num_layers": 2,
+    "dense_units": [
+      1024,
+      512
+    ],
+    "lr_stage1": 0.0008824906998131688,
+    "lr_stage2": 2.0474913006882903e-05,
+    "weight_decay": 1.0450737163016266e-05,
+    "label_smoothing": 0.075,
+    "dropout_rate": 0.25
+  },
+  "phase2_settings": {
+    "loss": "BinaryCrossentropy",
+    "optimizer": "AdamW",
+    "lr_schedules": "CosineDecay",
+    "warmup_epochs": 3,
+    "unfreeze_epochs": 5,
+    "unfreeze_layer": "conv5_block1_0_bn",
+    "trials": 20
+  },
+  "timestamp": 1769012453.2206218,
+  "seed": 28
+}
