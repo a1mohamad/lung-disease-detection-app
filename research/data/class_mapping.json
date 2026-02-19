@@ -1,0 +1,6 @@
+{
+    "COVID": 0,
+    "Normal": 1,
+    "Viral Pneumonia": 2,
+    "Lung_Opacity": 3
+}
