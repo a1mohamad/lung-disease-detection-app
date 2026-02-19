@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+numpy
+pillow
+tensorflow
+keras
+pyyaml
+matplotlib
+python-dotenv
+sqlalchemy
+pyodbc
+alembic
+confluent-kafka
+mlflow
