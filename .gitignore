@@ -1,10 +1,26 @@
-data/COVID/
-data/Normal/
-data/Lung_Opacity/
-data/metadata/
-data/test_images/
-data/tfrecords/
-data/Viral Pneumonia/
+# Editor
+.vscode/
+**/.vscode/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Env
+.env
+.env.*
+!.env.template
+!.env.compose.template
+
+# Research datasets (specific folders only)
+research/data/COVID/
+research/data/Normal/
+research/data/Lung_Opacity/
+research/data/metadata/
+research/data/test_images/
+research/data/tfrecords/
+research/data/Viral Pneumonia/
 
 
 # Byte-compiled / optimized / DLL files
