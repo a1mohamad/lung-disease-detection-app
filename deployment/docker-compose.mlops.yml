@@ -19,6 +19,7 @@ services:
       /bin/bash -c "until /opt/mssql-tools/bin/sqlcmd -S db -U sa -P ${MSSQL_SA_PASSWORD} -i /db/init/create_databases.sql; do sleep 5; done"
 
   mlflow:
+    image: lung-mlflow:dev
     build: ./mlops/mlflow
     depends_on:
       - db
@@ -31,6 +32,7 @@ services:
       - ./mlops/mlflow/artifacts:/mlflow/artifacts
 
   airflow:
+    image: lung-airflow:dev
     build:
       context: ./mlops
       dockerfile: airflow/Dockerfile
@@ -54,9 +56,7 @@ services:
                airflow webserver & airflow scheduler"
 
   post_hoc_backfill:
-    build:
-      context: ./mlops
-      dockerfile: airflow/Dockerfile
+    image: lung-airflow:dev
     profiles: ["manual"]
     environment:
       MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
