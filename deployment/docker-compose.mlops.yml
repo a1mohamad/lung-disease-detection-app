@@ -1,4 +1,4 @@
-services:
+﻿services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
@@ -22,7 +22,10 @@ services:
     image: lung-mlflow:dev
     build: ./mlops/mlflow
     depends_on:
-      - db
+      db:
+        condition: service_started
+      db-init:
+        condition: service_completed_successfully
     ports:
       - "${MLFLOW_PORT:-5000}:5000"
     environment:
@@ -40,33 +43,35 @@ services:
       - "${AIRFLOW_PORT:-8080}:8080"
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__EXECUTOR: "SequentialExecutor"
+      AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "${AIRFLOW_SIMPLE_AUTH_MANAGER_USERS:-admin:ADMIN}"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "${AIRFLOW_SIMPLE_AUTH_MANAGER_PASSWORDS_FILE:-/opt/project/runtime/airflow/simple_auth_manager_passwords.json}"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "sqlite:////opt/airflow/airflow.db"
       MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
       PROJECT_ROOT: "/opt/project"
-      PYTHONPATH: "/opt/project/deployment"
+      PYTHONPATH: "/opt/project"
     volumes:
       - ./mlops/airflow/dags:/opt/airflow/dags
       - ./:/opt/project
     depends_on:
       - mlflow
-    command: >
-      bash -c "airflow db migrate && \
-               airflow users create --username ${AIRFLOW_ADMIN_USER:-admin} --password ${AIRFLOW_ADMIN_PASSWORD:-admin} --firstname Admin --lastname User --role Admin --email ${AIRFLOW_ADMIN_EMAIL:-admin@example.com} || true && \
-               airflow webserver & airflow scheduler"
+    command: ["airflow", "standalone"]
 
   post_hoc_backfill:
     image: lung-airflow:dev
     profiles: ["manual"]
     environment:
       MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
-      PYTHONPATH: "/opt/project/deployment"
+      PYTHONPATH: "/opt/project"
     volumes:
       - ./:/opt/project
     depends_on:
       - mlflow
     command: >
-      bash -c "python /opt/project/deployment/mlops/jobs/post_hoc_backfill.py --register-model"
+      bash -c "python /opt/project/mlops/jobs/post_hoc_backfill.py --register-model"
 
 volumes:
   mssql_data:
+
+
+
