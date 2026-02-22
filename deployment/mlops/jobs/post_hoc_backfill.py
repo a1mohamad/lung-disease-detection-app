@@ -1,38 +1,20 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 from pathlib import Path
-from typing import Dict
 
 import mlflow
 
 from mlops.config.model_specs import MODEL_SPECS, POST_HOC_SPECS
 from mlops.config.settings import MLOpsSettings
-from mlops.core.backfill.notebook_params import collect_notebook_params
+from mlops.core.backfill.params import collect_notebook_params, load_optuna_params
 from mlops.core.data.tfrecord_ops import list_tfrecords, split_tfrecords
 from mlops.core.evaluation.runner import build_eval_dataset_for_spec, evaluate_model_for_spec
-from mlops.core.tracking.mlflow_io import flatten_dict, load_compiled_model, load_yaml
+from mlops.core.models.loader import load_compiled_model
+from mlops.core.tracking.mlflow_io import flatten_dict, load_yaml
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
-
-
-def load_optuna_params(paths: list[Path]) -> Dict[str, str]:
-    params: Dict[str, str] = {}
-    for path in paths:
-        if not path.exists():
-            continue
-        with path.open("r", encoding="utf-8") as f:
-            payload = json.load(f)
-        for key in ("best_hparams", "phase1_settings", "phase2_settings"):
-            if isinstance(payload.get(key), dict):
-                params.update(flatten_dict(payload[key], f"optuna.{key}"))
-        if "best_value" in payload:
-            params["optuna.best_value"] = str(payload["best_value"])
-        if "best_trial_number" in payload:
-            params["optuna.best_trial_number"] = str(payload["best_trial_number"])
-    return params
 
 
 def run_for_model(
@@ -190,4 +172,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
