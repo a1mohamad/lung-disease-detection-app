@@ -52,6 +52,7 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
   mlflow:
+    image: lung-mlflow:dev
     build: ./mlops/mlflow
     depends_on:
       - db
@@ -64,6 +65,7 @@ services:
       - ./mlops/mlflow/artifacts:/mlflow/artifacts
 
   airflow:
+    image: lung-airflow:dev
     build:
       context: ./mlops
       dockerfile: airflow/Dockerfile
@@ -87,9 +89,7 @@ services:
                airflow webserver & airflow scheduler"
 
   post_hoc_backfill:
-    build:
-      context: ./mlops
-      dockerfile: airflow/Dockerfile
+    image: lung-airflow:dev
     profiles: ["manual"]
     environment:
       MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
@@ -102,6 +102,7 @@ services:
       bash -c "python /opt/project/deployment/mlops/jobs/post_hoc_backfill.py --register-model"
 
   app:
+    image: lung-app:dev
     build: .
     depends_on:
       - kafka
@@ -133,7 +134,7 @@ services:
       - ./runtime:/app/runtime
 
   consumer_db:
-    build: .
+    image: lung-app:dev
     depends_on:
       - kafka
       - db
@@ -156,7 +157,7 @@ services:
       - ./runtime:/app/runtime
 
   consumer_monitoring:
-    build: .
+    image: lung-app:dev
     depends_on:
       - kafka
     environment:
@@ -169,7 +170,7 @@ services:
       - ./runtime:/app/runtime
 
   consumer_analytics:
-    build: .
+    image: lung-app:dev
     depends_on:
       - kafka
     environment:
@@ -182,7 +183,7 @@ services:
       - ./runtime:/app/runtime
 
   consumer_doctor:
-    build: .
+    image: lung-app:dev
     depends_on:
       - kafka
     environment:
@@ -195,7 +196,7 @@ services:
       - ./runtime:/app/runtime
 
   consumer_notifications:
-    build: .
+    image: lung-app:dev
     depends_on:
       - kafka
     environment:
