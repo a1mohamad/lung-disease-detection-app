@@ -9,7 +9,8 @@ import mlflow
 from mlops.config.model_specs import MODEL_SPECS
 from mlops.config.settings import MLOpsSettings
 from mlops.core.data.tfrecord_ops import list_tfrecords, split_tfrecords
-from mlops.core.tracking.mlflow_io import flatten_dict, load_compiled_model, load_yaml
+from mlops.core.models.loader import load_compiled_model
+from mlops.core.tracking.mlflow_io import flatten_dict, load_yaml
 from mlops.core.evaluation.runner import build_eval_dataset_for_spec, evaluate_model_for_spec
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
@@ -125,4 +126,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
