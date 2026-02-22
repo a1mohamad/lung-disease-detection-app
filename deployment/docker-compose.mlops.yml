@@ -1,4 +1,23 @@
 services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+    ports:
+      - "${DB_PORT:-1433}:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  db-init:
+    image: mcr.microsoft.com/mssql-tools
+    depends_on:
+      - db
+    volumes:
+      - ./db/init:/db/init
+    entrypoint: >
+      /bin/bash -c "until /opt/mssql-tools/bin/sqlcmd -S db -U sa -P ${MSSQL_SA_PASSWORD} -i /db/init/create_databases.sql; do sleep 5; done"
+
   mlflow:
     build: ./mlops/mlflow
     depends_on:
@@ -48,3 +67,6 @@ services:
       - mlflow
     command: >
       bash -c "python /opt/project/deployment/mlops/jobs/post_hoc_backfill.py --register-model"
+
+volumes:
+  mssql_data:
