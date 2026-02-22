@@ -22,6 +22,15 @@ research/data/test_images/
 research/data/tfrecords/
 research/data/Viral Pneumonia/
 
+# Generated runtime/artifacts
+research/logs/
+deployment/runtime/
+deployment/assets/predictions/
+
+
+# Large model artifacts (if generated locally)
+deployment/saved_models/
+research/models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
