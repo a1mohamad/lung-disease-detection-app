@@ -1,3 +1,12 @@
+data/COVID/
+data/Normal/
+data/Lung_Opacity/
+data/metadata/
+data/test_images/
+data/tfrecords/
+data/Viral Pneumonia/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
