@@ -8,11 +8,16 @@ import mlflow
 
 from mlops.config.model_specs import MODEL_SPECS, POST_HOC_SPECS
 from mlops.config.settings import MLOpsSettings
-from mlops.core.backfill.params import collect_notebook_params, load_optuna_params
+from mlops.core.backfill.params import (
+    collect_notebook_params,
+    collect_notebook_support_files,
+    load_optuna_params,
+)
 from mlops.core.data.tfrecord_ops import list_tfrecords, split_tfrecords
 from mlops.core.evaluation.runner import build_eval_dataset_for_spec, evaluate_model_for_spec
 from mlops.core.models.loader import load_compiled_model
 from mlops.core.tracking.mlflow_io import flatten_dict, load_yaml
+from mlops.core.tracking.model_signature import build_keras_model_signature
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
@@ -59,6 +64,8 @@ def run_for_model(
         for notebook_path in post_hoc_spec.notebooks:
             if notebook_path.exists():
                 mlflow.log_artifact(str(notebook_path), artifact_path="notebooks")
+        for support_file in collect_notebook_support_files(post_hoc_spec.notebooks):
+            mlflow.log_artifact(str(support_file), artifact_path="notebooks/support")
 
         notebook_params = collect_notebook_params(post_hoc_spec.notebooks)
         if notebook_params:
@@ -94,9 +101,11 @@ def run_for_model(
                 mlflow.log_metric(key, value)
 
         if register_model:
+            signature = build_keras_model_signature(model)
             mlflow.keras.log_model(
                 model,
-                artifact_path="model",
+                name="model",
+                signature=signature,
                 registered_model_name=spec.registered_name,
             )
 
