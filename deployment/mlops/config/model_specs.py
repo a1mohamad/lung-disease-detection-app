@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from typing import List
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(os.getenv("PROJECT_ROOT", str(Path(__file__).resolve().parents[2])))
+DEPLOYMENT_DIR = ROOT
+if not (DEPLOYMENT_DIR / "saved_models").exists() and (ROOT / "deployment" / "saved_models").exists():
+    DEPLOYMENT_DIR = ROOT / "deployment"
+
 RESEARCH_DIR = ROOT / "research"
-DEPLOYMENT_DIR = ROOT / "deployment"
+if not RESEARCH_DIR.exists() and (ROOT.parent / "research").exists():
+    RESEARCH_DIR = ROOT.parent / "research"
+
 SAVED_MODELS_DIR = DEPLOYMENT_DIR / "saved_models"
 
 
