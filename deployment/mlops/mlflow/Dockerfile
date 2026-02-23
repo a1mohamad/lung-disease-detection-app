@@ -11,4 +11,4 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir mlflow pyyaml pyodbc
 EXPOSE 5000
-CMD mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri "${MLFLOW_BACKEND_STORE_URI}" --default-artifact-root "${MLFLOW_DEFAULT_ARTIFACT_ROOT}"
+CMD mlflow server --host 0.0.0.0 --port 5000 --allowed-hosts "${MLFLOW_ALLOWED_HOSTS:-localhost,127.0.0.1,mlflow,localhost:5000,127.0.0.1:5000,mlflow:5000}" --backend-store-uri "${MLFLOW_BACKEND_STORE_URI}" --default-artifact-root "${MLFLOW_DEFAULT_ARTIFACT_ROOT}"
