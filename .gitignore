@@ -27,6 +27,9 @@ research/logs/
 deployment/runtime/
 deployment/assets/predictions/
 
+# Mlflow artifacts (ignore all except .gitkeep to keep the directory structure)
+deployment/mlops/mlflow/artifacts/*
+!deployment/mlops/mlflow/artifacts/.gitkeep
 
 # Large model artifacts (if generated locally)
 deployment/saved_models/
