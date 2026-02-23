@@ -155,8 +155,6 @@
       KAFKA_TOPIC_PREDICTIONS: "${KAFKA_TOPIC_PREDICTIONS:-lung.predictions}"
       KAFKA_GROUP_DB: "${KAFKA_GROUP_DB:-lung-consumer-db}"
     command: ["python", "-m", "kafka_pipeline.consumers.consumer_db"]
-    volumes:
-      - ./runtime:/app/runtime
 
   consumer_monitoring:
     image: lung-app:dev
