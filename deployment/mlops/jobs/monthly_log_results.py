@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import mlflow
+from mlflow import MlflowClient
 
 from mlops.config.model_specs import MODEL_SPECS
 from mlops.config.settings import MLOpsSettings
@@ -12,6 +13,7 @@ from mlops.core.data.tfrecord_ops import list_tfrecords, split_tfrecords
 from mlops.core.models.loader import load_compiled_model
 from mlops.core.tracking.mlflow_io import flatten_dict, load_yaml
 from mlops.core.evaluation.runner import build_eval_dataset_for_spec, evaluate_model_for_spec
+from mlops.core.tracking.evaluation_dataset import get_or_create_eval_dataset
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
@@ -27,16 +29,35 @@ def log_results_for_model(
 ) -> None:
     mlflow.set_experiment(experiment)
     metadata = load_yaml(spec.metadata_path)
+    client = MlflowClient()
 
     with mlflow.start_run(run_name=f"{spec.task}:{spec.name}"):
+        run = mlflow.active_run()
+        experiment_id = run.info.experiment_id if run else None
+        dataset_id = (
+            get_or_create_eval_dataset(
+                client=client,
+                experiment_id=experiment_id,
+                spec_name=spec.name,
+                stage=stage,
+                val_ratio=val_ratio,
+                tfrecords_dir=tfrecords_dir,
+            )
+            if experiment_id
+            else None
+        )
         mlflow.set_tags(
             {
                 "task": spec.task,
                 "model_name": spec.name,
-                "run_type": "monthly_logging",
+                "run_type": "monthly_evaluation",
+                "run_mode": "evaluation",
+                "mlflow.run.kind": "evaluation",
                 "tfrecords_dir": str(tfrecords_dir),
             }
         )
+        if dataset_id:
+            mlflow.set_tag("evaluation_dataset_id", dataset_id)
 
         mlflow.log_params(
             {
