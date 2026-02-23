@@ -21,7 +21,7 @@ with DAG(
     start_date=datetime(2026, 2, 1),
     schedule="@monthly",
     catchup=False,
-    tags=["mlflow", "logging"],
+    tags=["mlflow", "logging", "evaluation"],
 ) as dag:
     PythonOperator(
         task_id="log_unet_xception_segmentation",
