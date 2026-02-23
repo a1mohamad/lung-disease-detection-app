@@ -1,0 +1,30 @@
+{
+  "description": "Small tracked example of what an MLflow run may produce. Real artifacts stay ignored under deployment/mlops/mlflow/artifacts/.",
+  "experiment_id": 1,
+  "example_run_id": "58ce3f32d0744d13a73bc6b5b39dc070",
+  "run_name": "binary_classification:densenet_binary",
+  "example_artifact_tree": [
+    "artifacts/1/58ce3f32d0744d13a73bc6b5b39dc070/artifacts/metadata/metadata.yaml",
+    "artifacts/1/58ce3f32d0744d13a73bc6b5b39dc070/artifacts/notebooks/DenseNet121-healthy_binary_classification.ipynb",
+    "artifacts/1/58ce3f32d0744d13a73bc6b5b39dc070/artifacts/notebooks/support/utils.py",
+    "artifacts/1/58ce3f32d0744d13a73bc6b5b39dc070/artifacts/optuna/healthy_unhealthy-best_hparams.json"
+  ],
+  "example_model_registry_artifacts": [
+    "artifacts/1/models/m-1a0a9b098ceb4fa7af32565f2ac9d467/artifacts/MLmodel",
+    "artifacts/1/models/m-1a0a9b098ceb4fa7af32565f2ac9d467/artifacts/conda.yaml",
+    "artifacts/1/models/m-1a0a9b098ceb4fa7af32565f2ac9d467/artifacts/python_env.yaml",
+    "artifacts/1/models/m-1a0a9b098ceb4fa7af32565f2ac9d467/artifacts/requirements.txt",
+    "artifacts/1/models/m-1a0a9b098ceb4fa7af32565f2ac9d467/artifacts/data/model.keras",
+    "artifacts/1/models/m-1a0a9b098ceb4fa7af32565f2ac9d467/artifacts/data/keras_module.txt"
+  ],
+  "example_metrics": {
+    "reported_accuracy": 0.9212,
+    "reported_f1": 0.9245
+  },
+  "example_params": {
+    "model.name": "DenseNet121",
+    "model.task": "binary_classification",
+    "notebook.count": 3,
+    "optuna.best_trial_number": 10
+  }
+}
