@@ -7,6 +7,7 @@ from mlops.core.data.datasets import (
     build_multiclass_dataset,
     build_segmentation_dataset,
 )
+from mlops.core.data.tfrecord_ops import compute_steps_from_tfrecords
 from mlops.core.evaluation.runner import evaluate_model_for_spec
 from mlops.core.models.compile import get_preprocess_fn
 
@@ -61,9 +62,24 @@ def retrain_and_evaluate_for_spec(
     max_train_batches: int | None,
     max_eval_batches: int | None,
 ):
+    train_steps = compute_steps_from_tfrecords(list(train_files), batch_size)
+    val_steps = compute_steps_from_tfrecords(list(val_files), batch_size)
+
+    if max_train_batches:
+        train_steps = min(train_steps, max_train_batches)
+    if max_eval_batches:
+        val_steps = min(val_steps, max_eval_batches)
+
     train_ds, val_ds = build_train_val_datasets_for_spec(spec, metadata, train_files, val_files, batch_size)
     if max_train_batches:
         train_ds = train_ds.take(max_train_batches)
+    if max_eval_batches:
+        val_ds = val_ds.take(max_eval_batches)
+
+    if train_steps <= 0:
+        raise RuntimeError("Training steps resolved to zero. Check TFRecord files and batch size.")
+    if val_steps <= 0:
+        raise RuntimeError("Validation steps resolved to zero. Check TFRecord files and batch size.")
 
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
@@ -76,8 +92,10 @@ def retrain_and_evaluate_for_spec(
     model.fit(
         train_ds,
         epochs=epochs,
-        verbose=1,
+        verbose=2,
+        steps_per_epoch=train_steps,
         validation_data=val_ds,
+        validation_steps=val_steps,
         callbacks=callbacks,
     )
     metrics = evaluate_model_for_spec(spec, model, val_ds, max_eval_batches, metadata)
