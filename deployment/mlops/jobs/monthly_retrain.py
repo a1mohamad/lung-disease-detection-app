@@ -15,6 +15,7 @@ from mlops.core.models.loader import load_compiled_model
 from mlops.core.tracking.mlflow_io import flatten_dict, load_yaml
 from mlops.core.tracking.model_signature import build_keras_model_signature
 from mlops.core.tracking.registry import promote_if_better
+from mlops.core.tracking.run_summary import build_run_summary, log_run_summary
 from mlops.core.training.retrain import retrain_and_evaluate_for_spec
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
@@ -56,6 +57,13 @@ def run_for_model(
     try:
         mlflow.set_experiment(experiment)
         with mlflow.start_run(run_name=f"{spec.task}:{spec.name}") as run:
+            run_params = {
+                "epochs": epochs,
+                "batch_size": batch_size,
+                "max_train_batches": max_train_batches,
+                "max_eval_batches": max_eval_batches,
+                "val_ratio": val_ratio,
+            }
             mlflow.set_tags(
                 {
                     "task": spec.task,
@@ -65,23 +73,17 @@ def run_for_model(
                 }
             )
 
-            mlflow.log_params(
-                {
-                    "epochs": epochs,
-                    "batch_size": batch_size,
-                    "max_train_batches": max_train_batches,
-                    "max_eval_batches": max_eval_batches,
-                    "val_ratio": val_ratio,
-                }
-            )
+            mlflow.log_params(run_params)
 
             mlflow.log_artifact(str(spec.metadata_path), artifact_path="metadata")
 
+            reported_metrics: dict[str, object] = {}
             if isinstance(metadata, dict):
                 mlflow.log_params(flatten_dict(metadata))
-                reported_metrics = metadata.get("metrics", {})
-                if isinstance(reported_metrics, dict):
-                    for key, value in reported_metrics.items():
+                raw_reported_metrics = metadata.get("metrics", {})
+                if isinstance(raw_reported_metrics, dict):
+                    reported_metrics = raw_reported_metrics
+                    for key, value in raw_reported_metrics.items():
                         try:
                             mlflow.log_metric(f"reported_{key}", float(value))
                         except Exception:
@@ -101,6 +103,22 @@ def run_for_model(
 
             if register_model:
                 promote_if_better(spec.registered_name, run.info.run_id, spec.promotion_metric)
+
+            summary = build_run_summary(
+                run_type="monthly_retrain",
+                model_name=spec.name,
+                task=spec.task,
+                metrics=metrics,
+                params=run_params,
+                reported_metrics=reported_metrics,
+                extra={
+                    "run_id": run.info.run_id,
+                    "register_model": register_model,
+                    "registered_model_name": spec.registered_name if register_model else None,
+                    "promotion_metric": spec.promotion_metric if register_model else None,
+                },
+            )
+            log_run_summary(summary)
     except Exception as exc:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         fallback_dir = spec.model_dir / "retrained_fallback"
