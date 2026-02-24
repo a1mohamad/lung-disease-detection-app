@@ -13,8 +13,8 @@ class MLOpsSettings:
     EXPERIMENT = "lung-detection"
     MODEL_STAGE = "Production"
 
-    BATCH_SIZE = 16
-    EPOCHS = 20
+    BATCH_SIZE = 4
+    EPOCHS = 1
     VAL_RATIO = 0.2
-    MAX_TRAIN_BATCHES = None
-    MAX_EVAL_BATCHES = None
+    MAX_TRAIN_BATCHES = 1
+    MAX_EVAL_BATCHES = 1
