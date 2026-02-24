@@ -14,6 +14,7 @@ def retrain_model(
     experiment: str = "lung-detection",
     stage: str = "Production",
     val_ratio: float = 0.2,
+    register_model: bool = True,
 ) -> None:
     # Lazy import prevents heavy ML modules from loading at DAG parse time.
     from mlops.jobs.monthly_retrain import run_pipeline
@@ -28,4 +29,5 @@ def retrain_model(
         stage=stage,
         model_name=model_name,
         val_ratio=val_ratio,
+        register_model=register_model,
     )
