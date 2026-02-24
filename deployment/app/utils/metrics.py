@@ -1,5 +1,5 @@
-from keras import backend as K
 import tensorflow as tf
+
 
 @tf.keras.utils.register_keras_serializable()
 def dice_coefficient(
@@ -7,7 +7,8 @@ def dice_coefficient(
     y_pred: tf.Tensor,
     smooth: float = 1e-6
 ) -> tf.Tensor:
-    y_true_f = K.flatten(y_true)
-    y_pred_f = K.flatten(y_pred)
-    intersection = K.sum(y_true_f * y_pred_f)
-    return (2 * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
+    # Use TensorFlow ops directly for compatibility with Keras/TF versions
+    y_true_f = tf.reshape(tf.cast(y_true, tf.float32), [-1])
+    y_pred_f = tf.reshape(tf.cast(y_pred, tf.float32), [-1])
+    intersection = tf.reduce_sum(y_true_f * y_pred_f)
+    return (2.0 * intersection + smooth) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + smooth)
