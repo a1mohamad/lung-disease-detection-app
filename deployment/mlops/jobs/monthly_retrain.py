@@ -13,6 +13,7 @@ from mlops.config.settings import MLOpsSettings
 from mlops.core.data.tfrecord_ops import list_tfrecords, split_tfrecords
 from mlops.core.models.loader import load_compiled_model
 from mlops.core.tracking.mlflow_io import flatten_dict, load_yaml
+from mlops.core.tracking.model_signature import build_keras_model_signature
 from mlops.core.tracking.registry import promote_if_better
 from mlops.core.training.retrain import retrain_and_evaluate_for_spec
 
@@ -89,9 +90,11 @@ def run_for_model(
             for key, value in metrics.items():
                 mlflow.log_metric(key, value)
 
+            signature = build_keras_model_signature(model)
             mlflow.keras.log_model(
                 model,
                 name="model",
+                signature=signature,
                 registered_model_name=spec.registered_name if register_model else None,
             )
             mlflow.log_param("register_model", register_model)
