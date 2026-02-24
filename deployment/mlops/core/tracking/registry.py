@@ -13,12 +13,10 @@ def get_client() -> MlflowClient:
 def get_best_production_metric(model_name: str, metric: str) -> Optional[float]:
     client = get_client()
     try:
-        versions = client.get_latest_versions(model_name, stages=["Production"])
+        prod_version = client.get_model_version_by_alias(model_name, "production")
     except Exception:
         return None
-    if not versions:
-        return None
-    run_id = versions[0].run_id
+    run_id = prod_version.run_id
     run = client.get_run(run_id)
     return run.data.metrics.get(metric)
 
@@ -41,14 +39,19 @@ def promote_if_better(model_name: str, run_id: str, metric: str) -> None:
     candidate = run.data.metrics.get(metric)
 
     if best_value is None or (candidate is not None and candidate > best_value):
-        client.transition_model_version_stage(
+        client.set_registered_model_alias(
             name=model_name,
+            alias="production",
             version=current_version,
-            stage="Production",
-            archive_existing_versions=True,
         )
 
 
 def load_model_from_registry(model_name: str, stage: str):
-    uri = f"models:/{model_name}/{stage}"
-    return mlflow.keras.load_model(uri)
+    # Prefer aliases (`models:/name@production`) and fallback to legacy stage URIs.
+    alias = stage.strip().lower()
+    alias_uri = f"models:/{model_name}@{alias}"
+    try:
+        return mlflow.keras.load_model(alias_uri)
+    except Exception:
+        uri = f"models:/{model_name}/{stage}"
+        return mlflow.keras.load_model(uri)
