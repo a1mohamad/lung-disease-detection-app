@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
 class MLOpsSettings:
-    ROOT = Path(__file__).resolve().parents[3]
+    ROOT = Path(os.getenv("PROJECT_ROOT", str(Path(__file__).resolve().parents[2])))
     RESEARCH_DIR = ROOT / "research"
     DEPLOYMENT_DIR = ROOT / "deployment"
 
@@ -17,4 +18,3 @@ class MLOpsSettings:
     VAL_RATIO = 0.2
     MAX_TRAIN_BATCHES = None
     MAX_EVAL_BATCHES = None
-
