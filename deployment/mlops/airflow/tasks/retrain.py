@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-from mlops.jobs.monthly_retrain import run_pipeline
-
 
 def retrain_model(
     *,
@@ -17,6 +15,9 @@ def retrain_model(
     stage: str = "Production",
     val_ratio: float = 0.2,
 ) -> None:
+    # Lazy import prevents heavy ML modules from loading at DAG parse time.
+    from mlops.jobs.monthly_retrain import run_pipeline
+
     run_pipeline(
         tfrecords_dir=tfrecords_dir,
         batch_size=batch_size,
