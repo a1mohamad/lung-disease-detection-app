@@ -35,7 +35,13 @@ def _finalize_classification_dataset(
     dataset = dataset.batch(batch_size, drop_remainder=False)
     use_preprocess_input = not (preprocess_config and preprocess_config.get("preprocess_input_fn"))
 
-    def _prep(images, labels):
+    def _prep(*batch):
+        if len(batch) == 3:
+            images, _masks, labels = batch
+        elif len(batch) == 2:
+            images, labels = batch
+        else:
+            raise ValueError(f"Unexpected classification batch format with {len(batch)} tensors")
         if use_preprocess_input:
             return preprocess_input(images), labels
         return images, labels
@@ -99,4 +105,3 @@ def build_segmentation_dataset(
     dataset = dataset.map(to_segmentation_pair, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.batch(batch_size, drop_remainder=False)
     return dataset.prefetch(tf.data.AUTOTUNE)
-
