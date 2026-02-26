@@ -18,7 +18,7 @@ from mlops.airflow.tasks.retrain import retrain_model
 
 with DAG(
     dag_id="retrain_unet_xception_segmentation",
-    start_date=datetime(2026, 2, 1),
+    start_date=datetime(2026, 3, 1),
     schedule="@monthly",
     catchup=False,
     tags=["mlflow", "retrain", "segmentation"],
@@ -38,3 +38,5 @@ with DAG(
             "val_ratio": VAL_RATIO,
         },
     )
+
+
