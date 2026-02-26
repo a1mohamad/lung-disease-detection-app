@@ -7,7 +7,7 @@ from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOpe
 
 with DAG(
     dag_id="orchestrate_retrain_pipeline",
-    start_date=datetime(2026, 2, 1),
+    start_date=datetime(2026, 3, 1),
     schedule="@monthly",
     catchup=False,
     tags=["mlflow", "orchestration"],
@@ -65,3 +65,4 @@ with DAG(
         trigger_binary_mobilenet,
     ] >> binary_done
     binary_done >> trigger_diseases >> end
+
