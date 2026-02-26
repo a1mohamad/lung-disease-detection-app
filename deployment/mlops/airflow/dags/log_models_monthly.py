@@ -18,7 +18,7 @@ from mlops.airflow.tasks.logging import log_model_results
 
 with DAG(
     dag_id="log_models_monthly",
-    start_date=datetime(2026, 2, 1),
+    start_date=datetime(2026, 3, 1),
     schedule="@monthly",
     catchup=False,
     tags=["mlflow", "logging", "evaluation"],
@@ -106,3 +106,4 @@ with DAG(
             "val_ratio": VAL_RATIO,
         },
     )
+
