@@ -1,4 +1,20 @@
 services:
+  airflow-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: "${AIRFLOW_DB_USER:-airflow}"
+      POSTGRES_PASSWORD: "${AIRFLOW_DB_PASSWORD:-airflow}"
+      POSTGRES_DB: "${AIRFLOW_DB_NAME:-airflow}"
+    ports:
+      - "${AIRFLOW_DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_DB_USER:-airflow} -d ${AIRFLOW_DB_NAME:-airflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - airflow_pg_data:/var/lib/postgresql/data
+
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
@@ -47,7 +63,7 @@ services:
       AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "${AIRFLOW_SIMPLE_AUTH_MANAGER_USERS:-admin:ADMIN}"
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "${AIRFLOW_SIMPLE_AUTH_MANAGER_PASSWORDS_FILE:-/opt/project/runtime/airflow/simple_auth_manager_passwords.json}"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "sqlite:////opt/airflow/airflow.db"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://${AIRFLOW_DB_USER:-airflow}:${AIRFLOW_DB_PASSWORD:-airflow}@airflow-db:5432/${AIRFLOW_DB_NAME:-airflow}"
       MLFLOW_TRACKING_URI: "${MLFLOW_TRACKING_URI:-http://mlflow:5000}"
       PROJECT_ROOT: "/opt/project"
       PYTHONPATH: "/opt/project"
@@ -59,7 +75,10 @@ services:
       - ../research:/opt/project/research:ro
       - ./mlops/mlflow/artifacts:/mlflow/artifacts
     depends_on:
-      - mlflow
+      airflow-db:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
     command: ["airflow", "standalone"]
 
   post_hoc_backfill:
@@ -82,3 +101,7 @@ services:
 
 volumes:
   mssql_data:
+  airflow_pg_data:
+
+
+
