@@ -4,6 +4,7 @@ from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 
 from mlops.config.settings import MLOpsSettings
+from mlops.airflow.tasks.logging import log_model_results
 
 TFRECORDS_DIR = str(MLOpsSettings.TFRECORDS_DIR)
 EXPERIMENT = MLOpsSettings.EXPERIMENT
@@ -13,12 +14,11 @@ EPOCHS = MLOpsSettings.EPOCHS
 VAL_RATIO = MLOpsSettings.VAL_RATIO
 MAX_TRAIN_BATCHES = MLOpsSettings.MAX_TRAIN_BATCHES
 MAX_EVAL_BATCHES = MLOpsSettings.MAX_EVAL_BATCHES
-from mlops.airflow.tasks.logging import log_model_results
 
 
 with DAG(
     dag_id="log_models_monthly",
-    start_date=datetime(2026, 3, 1),
+    start_date=datetime(2026, 2, 1),
     schedule="@monthly",
     catchup=False,
     tags=["mlflow", "logging", "evaluation"],
