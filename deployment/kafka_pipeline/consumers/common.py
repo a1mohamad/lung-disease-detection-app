@@ -8,8 +8,8 @@ from typing import Any
 from confluent_kafka import Consumer, KafkaError
 from dotenv import load_dotenv
 
-# Ensure consumer processes load deployment/.env when run directly.
-load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
+# Load deployment/.env only for local direct runs; keep container-provided env values.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 
 
 def consumer_config(group_id: str) -> dict[str, str]:
