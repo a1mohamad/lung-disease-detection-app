@@ -46,6 +46,7 @@ services:
       - ./saved_models:/app/saved_models
       - ./assets:/app/assets
       - ./runtime:/app/runtime
+      - ./mlops/mlflow/artifacts:/mlflow/artifacts
 
   consumer_db:
     build: .
