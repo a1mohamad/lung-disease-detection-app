@@ -14,6 +14,7 @@ from mlops.core.models.loader import load_compiled_model
 from mlops.core.tracking.mlflow_io import flatten_dict, load_yaml
 from mlops.core.evaluation.runner import build_eval_dataset_for_spec, evaluate_model_for_spec
 from mlops.core.tracking.evaluation_dataset import get_or_create_eval_dataset
+from mlops.core.tracking.run_summary import build_run_summary, log_run_summary
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
@@ -33,6 +34,11 @@ def log_results_for_model(
 
     with mlflow.start_run(run_name=f"{spec.task}:{spec.name}"):
         run = mlflow.active_run()
+        run_params = {
+            "batch_size": batch_size,
+            "max_eval_batches": max_eval_batches,
+            "val_ratio": val_ratio,
+        }
         experiment_id = run.info.experiment_id if run else None
         dataset_id = (
             get_or_create_eval_dataset(
@@ -59,21 +65,17 @@ def log_results_for_model(
         if dataset_id:
             mlflow.set_tag("evaluation_dataset_id", dataset_id)
 
-        mlflow.log_params(
-            {
-                "batch_size": batch_size,
-                "max_eval_batches": max_eval_batches,
-                "val_ratio": val_ratio,
-            }
-        )
+        mlflow.log_params(run_params)
 
         mlflow.log_artifact(str(spec.metadata_path), artifact_path="metadata")
 
+        reported_metrics: dict[str, object] = {}
         if isinstance(metadata, dict):
             mlflow.log_params(flatten_dict(metadata))
-            reported_metrics = metadata.get("metrics", {})
-            if isinstance(reported_metrics, dict):
-                for key, value in reported_metrics.items():
+            raw_reported_metrics = metadata.get("metrics", {})
+            if isinstance(raw_reported_metrics, dict):
+                reported_metrics = raw_reported_metrics
+                for key, value in raw_reported_metrics.items():
                     try:
                         mlflow.log_metric(f"reported_{key}", float(value))
                     except Exception:
@@ -91,6 +93,21 @@ def log_results_for_model(
 
         for key, value in metrics.items():
             mlflow.log_metric(key, value)
+
+        summary = build_run_summary(
+            run_type="monthly_evaluation",
+            model_name=spec.name,
+            task=spec.task,
+            metrics=metrics,
+            params=run_params,
+            reported_metrics=reported_metrics,
+            extra={
+                "run_id": run.info.run_id if run else None,
+                "stage": stage,
+                "dataset_id": dataset_id,
+            },
+        )
+        log_run_summary(summary)
 
 
 def parse_args() -> argparse.Namespace:
