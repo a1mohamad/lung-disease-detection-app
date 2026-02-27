@@ -16,8 +16,24 @@ def _load_from_registry(model_name: str, custom_objects: Optional[dict[str, Any]
     import mlflow
 
     mlflow.set_tracking_uri(AppConfig.MLFLOW_TRACKING_URI)
-    uri = f"models:/{model_name}/{AppConfig.MLFLOW_MODEL_STAGE}"
-    return mlflow.keras.load_model(uri, custom_objects=custom_objects)
+    # Prefer alias-based registry URIs (MLflow 2.9+), fallback to legacy stage URIs.
+    alias = AppConfig.MLFLOW_MODEL_STAGE.strip().lower()
+    alias_uri = f"models:/{model_name}@{alias}"
+    try:
+        return mlflow.keras.load_model(alias_uri, custom_objects=custom_objects)
+    except Exception:
+        try:
+            stage_uri = f"models:/{model_name}/{AppConfig.MLFLOW_MODEL_STAGE}"
+            return mlflow.keras.load_model(stage_uri, custom_objects=custom_objects)
+        except Exception:
+            # Final fallback: load latest registered version when alias/stage is not set.
+            client = mlflow.MlflowClient()
+            versions = client.search_model_versions(f"name='{model_name}'")
+            if not versions:
+                raise
+            latest_version = max(versions, key=lambda v: int(v.version)).version
+            version_uri = f"models:/{model_name}/{latest_version}"
+            return mlflow.keras.load_model(version_uri, custom_objects=custom_objects)
 
 
 def load_keras_model(
@@ -28,14 +44,15 @@ def load_keras_model(
     custom_objects: Optional[dict[str, Any]] = None,
 ):
     local_model_path = str(model_dir / model_rel_path)
-    model_uri = f"models:/{model_name}/{AppConfig.MLFLOW_MODEL_STAGE}"
+    alias_uri = f"models:/{model_name}@{AppConfig.MLFLOW_MODEL_STAGE.strip().lower()}"
+    stage_uri = f"models:/{model_name}/{AppConfig.MLFLOW_MODEL_STAGE}"
 
     if AppConfig.MLFLOW_ENABLED:
         try:
             model = _load_from_registry(model_name, custom_objects=custom_objects)
             logger.info(
                 "Model loaded from MLflow registry. uri=%s tracking_uri=%s",
-                model_uri,
+                alias_uri,
                 AppConfig.MLFLOW_TRACKING_URI,
             )
             return model
@@ -44,7 +61,8 @@ def load_keras_model(
                 "model_name": model_name,
                 "model_stage": AppConfig.MLFLOW_MODEL_STAGE,
                 "tracking_uri": AppConfig.MLFLOW_TRACKING_URI,
-                "model_uri": model_uri,
+                "model_uri_alias": alias_uri,
+                "model_uri_stage": stage_uri,
                 "local_fallback_path": local_model_path,
                 "error": str(exc),
             }
