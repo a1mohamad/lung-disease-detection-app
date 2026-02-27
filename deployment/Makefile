@@ -32,7 +32,7 @@ final-build:
 	docker compose --progress=plain --env-file $(ENV_FILE) -f $(FINAL_FILE) build
 
 final-up:
-	docker compose --env-file $(ENV_FILE) -f $(FINAL_FILE) up -d
+	docker compose --ansi never --env-file $(ENV_FILE) -f $(FINAL_FILE) up -d --wait --wait-timeout 300
 
 final-down:
 	docker compose --env-file $(ENV_FILE) -f $(FINAL_FILE) down --remove-orphans
