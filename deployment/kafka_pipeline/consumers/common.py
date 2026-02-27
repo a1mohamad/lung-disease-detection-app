@@ -40,7 +40,16 @@ def poll_event(consumer: Consumer) -> dict[str, Any] | None:
     if msg is None:
         return None
     if msg.error():
-        if msg.error().code() == KafkaError._PARTITION_EOF:
+        code = msg.error().code()
+        # During startup the topic may not exist yet or brokers may still be warming up.
+        # Treat these as transient so long-running consumers don't crash.
+        if code in {
+            KafkaError._PARTITION_EOF,
+            KafkaError.UNKNOWN_TOPIC_OR_PART,
+            KafkaError._TRANSPORT,
+            KafkaError._ALL_BROKERS_DOWN,
+            KafkaError.REQUEST_TIMED_OUT,
+        }:
             return None
         raise RuntimeError(f"Kafka consumer error: {msg.error()}")
     return json.loads(msg.value().decode("utf-8"))
