@@ -2,7 +2,7 @@ ENV_FILE ?= .env.compose
 MLOPS_FILE ?= docker-compose.mlops.yml
 FINAL_FILE ?= docker-compose.final.yml
 
-.PHONY: mlops-build mlops-up mlops-down mlops-logs backfill mlops-ps
+.PHONY: mlops-build mlops-up mlops-down mlops-logs backfill backfill-eval mlops-ps
 .PHONY: final-build final-up final-down final-logs final-ps
 
 mlops-build:
@@ -20,8 +20,13 @@ mlops-logs:
 mlops-ps:
 	docker compose --env-file $(ENV_FILE) -f $(MLOPS_FILE) ps
 
+BACKFILL_ARGS ?=
+
 backfill:
-	docker compose --env-file $(ENV_FILE) -f $(MLOPS_FILE) --profile manual run --rm post_hoc_backfill
+	docker compose --env-file $(ENV_FILE) -f $(MLOPS_FILE) --profile manual run --rm post_hoc_backfill bash -c "python /opt/project/mlops/jobs/post_hoc_backfill.py --register-model $(BACKFILL_ARGS)"
+
+backfill-eval:
+	$(MAKE) backfill BACKFILL_ARGS="--with-eval"
 
 final-build:
 	docker compose --progress=plain --env-file $(ENV_FILE) -f $(FINAL_FILE) build
@@ -37,4 +42,3 @@ final-logs:
 
 final-ps:
 	docker compose --env-file $(ENV_FILE) -f $(FINAL_FILE) ps
-
