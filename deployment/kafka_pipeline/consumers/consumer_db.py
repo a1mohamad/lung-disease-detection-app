@@ -17,7 +17,7 @@ warnings.filterwarnings(
 # Load project env before importing DB modules (engine config is read at import time).
 _env_path = Path(__file__).resolve().parents[2] / ".env"
 for _k, _v in dotenv_values(_env_path).items():
-    if _v is not None:
+    if _v is not None and os.getenv(_k) is None:
         os.environ[_k] = _v
 
 from app.configs.config import AppConfig
