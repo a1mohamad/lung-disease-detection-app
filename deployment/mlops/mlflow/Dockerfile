@@ -1,4 +1,8 @@
 FROM python:3.11-slim
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=180 \
+    PIP_RETRIES=20 \
+    PIP_NO_CACHE_DIR=1
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl gnupg unixodbc-dev ca-certificates \
     && mkdir -p /etc/apt/keyrings \
@@ -9,6 +13,7 @@ RUN apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir mlflow pyyaml pyodbc
+RUN python -m pip install --upgrade pip \
+    && pip install --prefer-binary --retries ${PIP_RETRIES} --timeout ${PIP_DEFAULT_TIMEOUT} mlflow==3.9.0 pyyaml==6.0.3 pyodbc==5.3.0
 EXPOSE 5000
 CMD mlflow server --host 0.0.0.0 --port 5000 --allowed-hosts "${MLFLOW_ALLOWED_HOSTS:-localhost,127.0.0.1,mlflow,localhost:5000,127.0.0.1:5000,mlflow:5000}" --backend-store-uri "${MLFLOW_BACKEND_STORE_URI}" --default-artifact-root "${MLFLOW_DEFAULT_ARTIFACT_ROOT}"
