@@ -14,6 +14,6 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 RUN python -m pip install --upgrade pip \
-    && pip install --prefer-binary --retries ${PIP_RETRIES} --timeout ${PIP_DEFAULT_TIMEOUT} mlflow==3.9.0 pyyaml==6.0.3 pyodbc==5.3.0
+    && pip install --prefer-binary --retries ${PIP_RETRIES} --timeout ${PIP_DEFAULT_TIMEOUT} mlflow==3.10.0 pyyaml==6.0.3 pyodbc==5.3.0
 EXPOSE 5000
 CMD mlflow server --host 0.0.0.0 --port 5000 --allowed-hosts "${MLFLOW_ALLOWED_HOSTS:-localhost,127.0.0.1,mlflow,localhost:5000,127.0.0.1:5000,mlflow:5000}" --backend-store-uri "${MLFLOW_BACKEND_STORE_URI}" --default-artifact-root "${MLFLOW_DEFAULT_ARTIFACT_ROOT}"
