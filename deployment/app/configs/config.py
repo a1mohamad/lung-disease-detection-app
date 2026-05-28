@@ -18,6 +18,7 @@ class AppConfig:
     # 2. TOP-LEVEL DIRECTORIES
     APP_DIR = ROOT_DIR / "app"
     ASSETS_DIR = ROOT_DIR / "assets"
+    FRONTEND_DIR = ROOT_DIR / "frontend"
     MODELS_ROOT = ROOT_DIR / "saved_models"
 
     # 3. SPECIFIC MODEL CATEGORIES
