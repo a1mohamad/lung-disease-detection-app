@@ -1,3 +1,4 @@
 $ErrorActionPreference = "Stop"
 
-py -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload --env-file .env
+Write-Warning "run.ps1 is kept for compatibility. Prefer .\run-local.ps1."
+& "$PSScriptRoot\run-local.ps1"
