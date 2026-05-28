@@ -44,3 +44,5 @@ app = FastAPI(
 register_exception_handlers(app)
 app.include_router(router)
 app.mount("/static", StaticFiles(directory=AppConfig.ASSETS_DIR), name="static")
+if AppConfig.FRONTEND_DIR.exists():
+    app.mount("/ui", StaticFiles(directory=AppConfig.FRONTEND_DIR, html=True), name="ui")
