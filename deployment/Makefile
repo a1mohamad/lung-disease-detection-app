@@ -1,9 +1,12 @@
 ENV_FILE ?= .env.compose
+RUNTIME_ENV_FILE ?= .env.runtime
 MLOPS_FILE ?= docker-compose.mlops.yml
 FINAL_FILE ?= docker-compose.final.yml
+RUNTIME_FILE ?= docker-compose.runtime.yml
 
 .PHONY: mlops-build mlops-up mlops-down mlops-logs backfill backfill-eval mlops-ps
 .PHONY: final-build final-up final-down final-logs final-ps
+.PHONY: runtime-build runtime-up runtime-down runtime-logs runtime-ps
 
 mlops-build:
 	docker compose --progress=plain --env-file $(ENV_FILE) -f $(MLOPS_FILE) build
@@ -42,3 +45,18 @@ final-logs:
 
 final-ps:
 	docker compose --env-file $(ENV_FILE) -f $(FINAL_FILE) ps
+
+runtime-build:
+	docker compose --progress=plain --env-file $(RUNTIME_ENV_FILE) -f $(RUNTIME_FILE) build
+
+runtime-up:
+	docker compose --env-file $(RUNTIME_ENV_FILE) -f $(RUNTIME_FILE) up -d
+
+runtime-down:
+	docker compose --env-file $(RUNTIME_ENV_FILE) -f $(RUNTIME_FILE) down --remove-orphans
+
+runtime-logs:
+	docker compose --env-file $(RUNTIME_ENV_FILE) -f $(RUNTIME_FILE) logs -f
+
+runtime-ps:
+	docker compose --env-file $(RUNTIME_ENV_FILE) -f $(RUNTIME_FILE) ps
