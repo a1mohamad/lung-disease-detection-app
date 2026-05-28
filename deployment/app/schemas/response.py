@@ -19,3 +19,7 @@ class PredictResponse(BaseModel):
     final_label_name: Optional[str] = None
     models_results: Optional[Dict[str, ModelResult]] = None
     disease: Optional[DiseaseResult] = None
+    source_url: Optional[str] = None
+    mask_url: Optional[str] = None
+    roi_url: Optional[str] = None
+    overlay_url: Optional[str] = None
