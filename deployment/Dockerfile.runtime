@@ -17,6 +17,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY app /app/app
 COPY kafka_pipeline /app/kafka_pipeline
+COPY frontend /app/frontend
 COPY assets/*.json /app/assets/
 
 RUN mkdir -p /app/assets/predictions /app/saved_models
