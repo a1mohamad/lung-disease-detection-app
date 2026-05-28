@@ -12,6 +12,7 @@ __pycache__/
 .env.*
 !.env.template
 !.env.compose.template
+!.env.runtime.template
 
 # Research datasets (specific folders only)
 research/data/COVID/
