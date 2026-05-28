@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import tensorflow as tf
@@ -29,6 +28,8 @@ def plot_prediction_bars(
     probs_by_label: dict,
     title: str = "Prediction Probabilities",
 ) -> None:
+    import matplotlib.pyplot as plt
+
     labels = list(probs_by_label.keys())
     values = [float(probs_by_label[k]) for k in labels]
 
@@ -42,6 +43,8 @@ def plot_prediction_bars(
     plt.show()
 
 def visualization(img: tf.Tensor, roi_img: tf.Tensor, mask: tf.Tensor) -> None:
+    import matplotlib.pyplot as plt
+
     fig, axs = plt.subplots(1, 3, figsize=(18, 5))
     axs[0].axis("off")
     img_n = normalize_image(tf.squeeze(img), mode='imagenet')
