@@ -1,0 +1,30 @@
+services:
+  app-runtime:
+    image: lung-app-runtime:dev
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      TF_CPP_MIN_LOG_LEVEL: "${TF_CPP_MIN_LOG_LEVEL:-3}"
+      TF_ENABLE_ONEDNN_OPTS: "${TF_ENABLE_ONEDNN_OPTS:-0}"
+      MLFLOW_ENABLED: "false"
+      MLFLOW_STRICT: "false"
+      KAFKA_ENABLED: "false"
+      DB_LOGGING_ENABLED: "false"
+    volumes:
+      - ./saved_models:/app/saved_models:ro
+      - ./assets:/app/assets
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
