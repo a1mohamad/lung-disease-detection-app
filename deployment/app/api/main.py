@@ -32,7 +32,8 @@ async def lifespan(app: FastAPI):
     yield
     # shutdown: cleanup if needed
     close_kafka_producer()
-    engine.dispose()
+    if engine is not None:
+        engine.dispose()
 
 app = FastAPI(
     title="Lung Disease Detection API",
