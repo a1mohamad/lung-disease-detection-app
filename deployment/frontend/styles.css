@@ -24,6 +24,8 @@ body {
     line-height: 1.5;
     min-height: 100vh;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Ambient Background Glow */
@@ -37,7 +39,7 @@ body {
     pointer-events: none;
 }
 
-.app-container { max-width: 1400px; margin: 0 auto; padding: 32px; }
+.app-container { max-width: 1400px; margin: 0 auto; padding: 32px; flex: 1; width: 100%; }
 
 /* Header */
 .top-ribbon { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 16px; }
@@ -64,7 +66,6 @@ body {
 .pipeline-panel { grid-column: span 6; }
 .ensemble-panel { grid-column: span 6; }
 .ethics-panel { grid-column: span 12; }
-.footer-panel { grid-column: span 12; }
 
 .panel-header h2 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
 .panel-header p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
@@ -103,13 +104,13 @@ body {
 .verdict-badge.healthy { background: var(--healthy-bg); color: var(--healthy-accent); border: 1px solid var(--healthy-accent); }
 .verdict-badge.unhealthy { background: var(--pathology-bg); color: var(--pathology-accent); border: 1px solid var(--pathology-accent); }
 
-/* Gauge styling */
-.gauge-container { position: relative; width: 140px; text-align: center; }
-.gauge-svg { width: 100%; overflow: visible; }
+/* Gauge styling fixed to avoid text overlap */
+.gauge-container { position: relative; width: 140px; text-align: center; padding-bottom: 24px; }
+.gauge-svg { display: block; width: 100%; overflow: visible; }
 .gauge-bg { stroke: rgba(255,255,255,0.1); }
 .gauge-fill { stroke: var(--brand-accent); stroke-dasharray: 126; stroke-dashoffset: 126; transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s; }
-.gauge-readout { position: absolute; bottom: 10px; left: 0; width: 100%; font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; line-height: 1; }
-.gauge-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-top: -5px; }
+.gauge-readout { position: absolute; bottom: 25px; left: 0; width: 100%; font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; line-height: 1; }
+.gauge-label { position: absolute; bottom: 0; left: 0; width: 100%; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
 
 /* Probabilities */
 .probability-split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
@@ -141,7 +142,7 @@ body {
 .lightbox-close { position: absolute; top: 24px; right: 24px; background: transparent; border: none; color: #fff; font-size: 2rem; cursor: pointer; transition: color 0.2s; }
 .lightbox-close:hover { color: var(--pathology-accent); }
 
-/* Ensemble Matrix (Dual Prob Support) */
+/* Ensemble Matrix */
 .model-matrix { display: grid; gap: 12px; margin-top: 16px; }
 .model-row { padding: 16px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--panel-border); }
 .model-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -158,19 +159,19 @@ body {
 .mini-scores { margin-top: 12px; display: grid; gap: 8px; }
 .mini-score-row { display: flex; justify-content: space-between; font-size: 0.9rem; }
 
-/* Ethics & Footer Panels */
-.ethics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.ethics-block { padding: 24px; background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px solid var(--panel-border); }
-.ethics-icon { font-size: 1.5rem; margin-bottom: 16px; }
-.highlight-icon { color: var(--brand-accent); }
-.alert-icon { color: #f59e0b; }
-.ethics-block h3 { margin-bottom: 8px; font-size: 1.1rem; }
-.ethics-block p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+/* Final Note Block */
+.final-note-content p { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px; }
+.final-note-content p:last-child { margin-bottom: 0; }
+.ethics-disclaimer { padding: 16px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; color: #fbbf24 !important; border-radius: 6px; }
 
-.contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
-.contact-link { display: flex; align-items: center; gap: 12px; padding: 16px; background: rgba(0,0,0,0.4); border: 1px solid var(--panel-border); border-radius: 12px; color: var(--text-main); text-decoration: none; font-size: 0.9rem; transition: all 0.2s; }
-.contact-link:hover { background: var(--panel-bg); border-color: var(--brand-accent); transform: translateY(-2px); }
-.contact-link i { font-size: 1.2rem; color: var(--brand-accent); width: 24px; text-align: center; }
+/* Global Footer Restyled */
+.global-footer { margin-top: 40px; padding: 40px 20px; text-align: center; border-top: 1px solid var(--panel-border); background: rgba(0,0,0,0.2); }
+.footer-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 32px; margin-bottom: 32px; }
+.footer-link { display: flex; align-items: center; gap: 8px; color: var(--text-main); text-decoration: none; font-size: 0.95rem; font-weight: 500; transition: color 0.2s, transform 0.2s; }
+.footer-link:hover { color: var(--brand-accent); transform: translateY(-2px); }
+.footer-link i { font-size: 1.2rem; }
+.ai-warning { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; }
+.copyright { color: rgba(148, 163, 184, 0.6); font-size: 0.8rem; letter-spacing: 0.5px; }
 
 .error-toast { margin-top: 16px; padding: 12px; background: var(--pathology-bg); color: var(--pathology-accent); border-radius: 8px; font-size: 0.9rem; }
 .hidden { display: none !important; }
@@ -178,10 +179,9 @@ body {
 /* Responsive */
 @media (max-width: 1100px) {
     .input-panel, .results-primary, .pipeline-panel, .ensemble-panel { grid-column: span 12; }
-    .ethics-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
     .probability-split, .model-dual-bars { grid-template-columns: 1fr; }
     .diagnosis-header { flex-direction: column; }
-    .gauge-container { width: 100%; max-width: 200px; margin: 0 auto; }
+    .footer-links { gap: 16px; flex-direction: column; align-items: center; }
 }
