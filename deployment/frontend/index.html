@@ -12,12 +12,10 @@
 </head>
 <body>
 
-    <!-- Ambient Background -->
     <div class="ambient-glow"></div>
 
     <div class="app-container">
         
-        <!-- Header Ribbon -->
         <header class="top-ribbon">
             <div class="brand">
                 <div class="brand-logo"><i class="fa-solid fa-lungs"></i></div>
@@ -36,10 +34,8 @@
             </div>
         </header>
 
-        <!-- Main Bento Grid -->
         <main class="bento-grid">
             
-            <!-- Bento Box 1: Input Engine -->
             <section class="bento-panel input-panel">
                 <div class="panel-header">
                     <h2>Inference Source</h2>
@@ -78,7 +74,6 @@
                 <div id="messagePanel" class="error-toast hidden"></div>
             </section>
 
-            <!-- Bento Box 2: Primary Output -->
             <section class="bento-panel results-primary hidden" id="resultPrimary">
                 <div class="diagnosis-header">
                     <div class="diagnosis-titles">
@@ -87,12 +82,9 @@
                         <div class="verdict-badge" id="decisionBadge">Standby</div>
                     </div>
                     
-                    <!-- Severity Gauge (Speedometer) -->
                     <div class="gauge-container">
                         <svg viewBox="0 0 100 55" class="gauge-svg">
-                            <!-- Background Track -->
                             <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="8" stroke-linecap="round"></path>
-                            <!-- Dynamic Fill Track -->
                             <path class="gauge-fill" id="gaugeFill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="8" stroke-linecap="round"></path>
                         </svg>
                         <div class="gauge-readout" id="gaugeReadout">0%</div>
@@ -101,7 +93,6 @@
                 </div>
 
                 <div class="probability-split">
-                    <!-- Healthy Metric -->
                     <div class="prob-card healthy-card">
                         <div class="prob-header">
                             <i class="fa-solid fa-shield-heart"></i> Healthy Probability
@@ -112,7 +103,6 @@
                         </div>
                     </div>
 
-                    <!-- Pathology Metric -->
                     <div class="prob-card pathology-card">
                         <div class="prob-header">
                             <i class="fa-solid fa-virus"></i> Pathology Detected
@@ -124,14 +114,12 @@
                     </div>
                 </div>
 
-                <!-- Dynamic Clinical Notes -->
                 <div class="clinical-notes" id="clinicalNotesBox">
                     <div class="notes-title"><i class="fa-solid fa-stethoscope"></i> Clinical Advisory Note</div>
                     <p id="clinicalNotesText">Awaiting computational analysis...</p>
                 </div>
             </section>
 
-            <!-- Bento Box 3: Image Pipeline -->
             <section class="bento-panel pipeline-panel hidden" id="resultPipeline">
                 <div class="panel-header">
                     <h2>Spatial Pipeline</h2>
@@ -157,7 +145,6 @@
                 </div>
             </section>
 
-            <!-- Bento Box 4: Ensemble Analytics -->
             <section class="bento-panel ensemble-panel hidden" id="resultEnsemble">
                 <div class="panel-header">
                     <h2>Ensemble Telemetry</h2>
@@ -171,49 +158,37 @@
                 </div>
 
                 <div class="model-matrix" id="modelDetails">
-                    <!-- Models injected here via JS -->
-                </div>
+                    </div>
             </section>
 
-            <!-- Bento Box 5: Project Context & AI Ethics -->
             <section class="bento-panel ethics-panel">
                 <div class="panel-header">
-                    <h2>System Architecture & Ethics</h2>
+                    <h2>Final Note</h2>
                 </div>
-                <div class="ethics-grid">
-                    <div class="ethics-block">
-                        <i class="fa-solid fa-chart-network ethics-icon highlight-icon"></i>
-                        <h3>Verified Performance</h3>
-                        <p>This diagnostic matrix has achieved a <strong>90% performance gain</strong> on real-world clinical datasets, optimizing targeted bounding parameters for respiratory anomalies.</p>
-                    </div>
-                    <div class="ethics-block">
-                        <i class="fa-solid fa-scale-balanced ethics-icon alert-icon"></i>
-                        <h3>Clinical & AI Ethics</h3>
-                        <p><strong>Disclaimer: AI can make mistake.</strong> This system is engineered as an assistive computational tool and must strictly operate alongside professional medical judgment. Always correlate outputs with clinical history.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Bento Box 6: Engineering Contact Footer -->
-            <section class="bento-panel footer-panel">
-                <div class="panel-header">
-                    <h2>Communication Uplink</h2>
-                    <p>Engineering & Research Contact Matrix</p>
-                </div>
-                <div class="contact-grid">
-                    <a href="mailto:a1.mohamad.askari@gmail.com" class="contact-link"><i class="fa-solid fa-envelope"></i> a1.mohamad.askari</a>
-                    <a href="mailto:amirmohmdaskari@gmail.com" class="contact-link"><i class="fa-brands fa-apple"></i> amirmohmdaskari@gmail.com</a>
-                    <a href="tel:+989012223122" class="contact-link"><i class="fa-solid fa-phone"></i> +98 901 222 3122</a>
-                    <a href="https://github.com/a1mohamad" target="_blank" class="contact-link"><i class="fa-brands fa-github"></i> github.com/a1mohamad</a>
-                    <a href="https://www.linkedin.com/in/amirmohammad-askari/" target="_blank" class="contact-link"><i class="fa-brands fa-linkedin"></i> linkedin.com/in/amirmohammad-askari/</a>
-                    <a href="https://www.kaggle.com/amirmohamadaskari" target="_blank" class="contact-link"><i class="fa-brands fa-kaggle"></i> kaggle.com/amirmohamadaskari</a>
+                <div class="final-note-content">
+                    <p>Over a rigorous 9-month development cycle, these architectures were meticulously fine-tuned and trained on approximately 23,000 MRI and X-Ray images sourced globally. This deep learning ensemble achieved a <strong>90% accuracy rate</strong> on independent test datasets.</p>
+                    <p class="ethics-disclaimer">
+                        <i class="fa-solid fa-triangle-exclamation"></i> <strong>Disclaimer:</strong> AI systems can make mistakes and should never replace real doctors. Always correlate outputs with clinical history and professional medical judgment.
+                    </p>
                 </div>
             </section>
 
         </main>
     </div>
 
-    <!-- Lightbox for Image Zoom -->
+    <footer class="global-footer">
+        <div class="footer-links">
+            <a href="mailto:a1.mohamad.askari@gmail.com" class="footer-link"><i class="fa-solid fa-envelope"></i> Gmail</a>
+            <a href="mailto:amirmohmdaskari@gmail.com" class="footer-link"><i class="fa-brands fa-apple"></i> iCloud</a>
+            <a href="tel:+989012223122" class="footer-link"><i class="fa-solid fa-phone"></i> Phone</a>
+            <a href="https://github.com/a1mohamad" target="_blank" class="footer-link"><i class="fa-brands fa-github"></i> GitHub</a>
+            <a href="https://www.linkedin.com/in/amirmohammad-askari/" target="_blank" class="footer-link"><i class="fa-brands fa-linkedin"></i> LinkedIn</a>
+            <a href="https://www.kaggle.com/amirmohamadaskari" target="_blank" class="footer-link"><i class="fa-brands fa-kaggle"></i> Kaggle</a>
+        </div>
+        <div class="ai-warning">AI can make mistakes. Check important info.</div>
+        <div class="copyright">&copy; 2026 Amir Mohamad Askari &bull; All Research Open Sourced via Apache License</div>
+    </footer>
+
     <div id="lightboxOverlay" class="lightbox hidden">
         <button id="lightboxClose" class="lightbox-close"><i class="fa-solid fa-xmark"></i></button>
         <img id="lightboxImage" src="" alt="Zoomed View" />
