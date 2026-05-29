@@ -156,7 +156,7 @@ function renderResult(result) {
       notesBox.style.borderLeftColor = "var(--healthy-accent)";
   }
 
-  // Animate Gauge (Speedometer) - Math: Path length is approx 126
+  // Animate Gauge (Speedometer)
   const gaugeFill = document.querySelector("#gaugeFill");
   const gaugeReadout = document.querySelector("#gaugeReadout");
   const gaugeOffset = 126 - (126 * unhealthyProb);
@@ -207,11 +207,14 @@ function renderModels(models) {
 
   Object.entries(models).forEach(([name, model]) => {
     const threshold = THRESHOLDS[name] || 0.5;
+    
+    // Check what the model actually voted
     const isModelUnhealthy = String(model.label_name).toLowerCase() === "unhealthy" || model.label === 1;
     
-    // Calculate Dual Probs for each model based on its raw probability
-    let mUnhealthyProb = isModelUnhealthy ? model.prob : 1 - model.prob;
+    // If it voted Healthy, its `model.prob` is the Healthy Probability.
+    // If it voted Unhealthy, its `model.prob` is the Unhealthy Probability.
     let mHealthyProb = isModelUnhealthy ? 1 - model.prob : model.prob;
+    let mUnhealthyProb = isModelUnhealthy ? model.prob : 1 - model.prob;
 
     const row = document.createElement("div");
     row.className = "model-row";
