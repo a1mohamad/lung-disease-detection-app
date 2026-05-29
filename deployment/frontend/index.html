@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lung Disease Detection | Precision Diagnostics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+    <div class="ambient-glow"></div>
+
+    <div class="app-container">
+        
+        <header class="top-ribbon">
+            <div class="brand">
+                <div class="brand-logo"><i class="fa-solid fa-lungs"></i></div>
+                <div class="brand-text">
+                    <h1>Lung Disease Detection</h1>
+                    <span>AI Respiratory Diagnostics</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="https://github.com/a1mohamad/lung-disease-detection-app" target="_blank" class="github-source-btn">
+                    <i class="fa-brands fa-github"></i> <span>Source Code</span>
+                </a>
+                <div class="system-status" id="apiStatus">
+                    <div class="pulse-dot"></div> Initializing...
+                </div>
+            </div>
+        </header>
+
+        <main class="bento-grid">
+            
+            <section class="bento-panel input-panel">
+                <div class="panel-header">
+                    <h2>Inference Source</h2>
+                    <p>Provide structural matrix</p>
+                </div>
+
+                <div class="segmented-control" role="tablist">
+                    <button class="segment active" data-mode="upload">File</button>
+                    <button class="segment" data-mode="url">URL</button>
+                    <button class="segment" data-mode="base64">Base64</button>
+                </div>
+
+                <form id="predictForm">
+                    <div class="mode-view active" data-view="upload">
+                        <label class="upload-zone" for="imageFile">
+                            <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" />
+                            <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                            <span class="upload-title">Drop X-Ray Here</span>
+                            <span class="upload-meta" id="fileMeta">PNG, JPG, WEBP</span>
+                        </label>
+                    </div>
+
+                    <div class="mode-view" data-view="url">
+                        <input class="modern-input" id="imageUrl" type="url" placeholder="Paste image endpoint URL..." />
+                    </div>
+
+                    <div class="mode-view" data-view="base64">
+                        <textarea class="modern-input" id="imageBase64" rows="3" placeholder="Paste Base64 string..."></textarea>
+                    </div>
+
+                    <div class="action-row">
+                        <button id="analyzeButton" class="btn-primary" type="submit">Execute Analysis</button>
+                        <button id="resetButton" class="btn-icon" type="button" title="Reset UI"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+                </form>
+                <div id="messagePanel" class="error-toast hidden"></div>
+            </section>
+
+            <section class="bento-panel results-primary hidden" id="resultPrimary">
+                <div class="diagnosis-header">
+                    <span class="sub-label">Final Classification</span>
+                    <h2 id="finalLabel">Waiting...</h2>
+                    <div class="verdict-badge" id="decisionBadge">Standby</div>
+                </div>
+
+                <div class="probability-split">
+                    <div class="prob-card healthy-card">
+                        <div class="prob-header">
+                            <i class="fa-solid fa-shield-heart"></i> Healthy Probability
+                        </div>
+                        <div class="prob-value" id="healthyScore">0.0%</div>
+                        <div class="prob-bar-bg">
+                            <div class="prob-bar-fill healthy-fill" id="healthyBar"></div>
+                        </div>
+                    </div>
+
+                    <div class="prob-card pathology-card">
+                        <div class="prob-header">
+                            <i class="fa-solid fa-virus"></i> Pathology Detected
+                        </div>
+                        <div class="prob-value" id="unhealthyScore">0.0%</div>
+                        <div class="prob-bar-bg">
+                            <div class="prob-bar-fill pathology-fill" id="unhealthyBar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="clinical-notes" id="clinicalNotesBox">
+                    <div class="notes-title"><i class="fa-solid fa-clipboard-user"></i> Clinical Advisory Note</div>
+                    <p id="clinicalNotesText">Awaiting computational analysis...</p>
+                </div>
+            </section>
+
+            <section class="bento-panel pipeline-panel hidden" id="resultPipeline">
+                <div class="panel-header">
+                    <h2>Spatial Pipeline</h2>
+                    <p>Click images to expand matrix</p>
+                </div>
+                <div class="vision-grid">
+                    <div class="vision-stage">
+                        <img id="sourceImage" alt="Source" />
+                        <span>RAW</span>
+                    </div>
+                    <div class="vision-stage">
+                        <img id="roiImage" alt="ROI" />
+                        <span>ROI</span>
+                    </div>
+                    <div class="vision-stage">
+                        <img id="maskImage" alt="Mask" />
+                        <span>MASK</span>
+                    </div>
+                    <div class="vision-stage">
+                        <img id="overlayImage" alt="Overlay" />
+                        <span>FUSION</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bento-panel ensemble-panel hidden" id="resultEnsemble">
+                <div class="panel-header">
+                    <h2>Ensemble Telemetry</h2>
+                    <p>Sub-network dual probability tracking</p>
+                </div>
+                
+                <div id="diseaseCard" class="hidden disease-sub-card">
+                    <span class="sub-label">Disease Classifier Breakdown</span>
+                    <h3 id="diseaseLabel">-</h3>
+                    <div id="diseaseScores" class="mini-scores"></div>
+                </div>
+
+                <div class="model-matrix" id="modelDetails">
+                    </div>
+            </section>
+
+            <section class="bento-panel ethics-panel">
+                <div class="ethics-grid">
+                    <div class="ethics-block">
+                        <i class="fa-solid fa-chart-line ethics-icon highlight-icon"></i>
+                        <h3>Verified Performance</h3>
+                        <p>This diagnostic matrix has achieved a <strong>90% performance gain</strong> on real-world clinical datasets, optimizing targeted bounding parameters for respiratory anomalies.</p>
+                    </div>
+                    <div class="ethics-block">
+                        <i class="fa-solid fa-scale-balanced ethics-icon"></i>
+                        <h3>Clinical & AI Ethics</h3>
+                        <p><strong>Disclaimer: AI computational models can make mistakes.</strong> This system is engineered as an assistive computational tool and must strictly operate alongside professional medical judgment. Always correlate outputs with clinical history.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bento-panel
