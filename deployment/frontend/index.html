@@ -50,11 +50,14 @@
 
                 <form id="predictForm">
                     <div class="mode-view active" data-view="upload">
-                        <label class="upload-zone" for="imageFile">
+                        <label class="upload-zone" for="imageFile" id="uploadZone">
                             <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" />
-                            <i class="fa-solid fa-arrow-up-from-bracket"></i>
-                            <span class="upload-title">Drop X-Ray Here</span>
-                            <span class="upload-meta" id="fileMeta">PNG, JPG, WEBP</span>
+                            <img id="uploadPreview" class="hidden" alt="X-Ray Preview" />
+                            <div class="upload-content">
+                                <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                                <span class="upload-title">Drop X-Ray Here</span>
+                                <span class="upload-meta" id="fileMeta">PNG, JPG, WEBP</span>
+                            </div>
                         </label>
                     </div>
 
