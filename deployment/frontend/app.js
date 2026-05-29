@@ -201,6 +201,7 @@ function renderDisease(disease) {
   card.classList.remove("hidden");
 }
 
+// Fixed function: Removes conditional flipping logic so probabilities map directly to 1 (Pathology)
 function renderModels(models) {
   const container = document.querySelector("#modelDetails");
   container.innerHTML = "";
@@ -208,13 +209,9 @@ function renderModels(models) {
   Object.entries(models).forEach(([name, model]) => {
     const threshold = THRESHOLDS[name] || 0.5;
     
-    // Check what the model actually voted
-    const isModelUnhealthy = String(model.label_name).toLowerCase() === "unhealthy" || model.label === 1;
-    
-    // If it voted Healthy, its `model.prob` is the Healthy Probability.
-    // If it voted Unhealthy, its `model.prob` is the Unhealthy Probability.
-    let mHealthyProb = isModelUnhealthy ? 1 - model.prob : model.prob;
-    let mUnhealthyProb = isModelUnhealthy ? model.prob : 1 - model.prob;
+    // model.prob from the API is strictly the Pathology (class 1) raw probability
+    let mUnhealthyProb = model.prob;
+    let mHealthyProb = 1 - model.prob;
 
     const row = document.createElement("div");
     row.className = "model-row";
@@ -248,6 +245,12 @@ function formatModelName(name) {
 function resetUi() {
   form.reset();
   fileMeta.textContent = "PNG, JPG, WEBP";
+  
+  // Clear the image preview
+  const preview = document.querySelector("#uploadPreview");
+  preview.src = "";
+  preview.classList.add("hidden");
+  
   pPrimary.classList.add("hidden");
   pPipeline.classList.add("hidden");
   pEnsemble.classList.add("hidden");
@@ -259,10 +262,22 @@ function resetUi() {
 }
 
 modeButtons.forEach((btn) => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
+
+// Added logic to inject an image preview via Object URL
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
-  fileMeta.textContent = file ? file.name : "PNG, JPG, WEBP";
+  const preview = document.querySelector("#uploadPreview");
+  if (file) {
+    fileMeta.textContent = file.name;
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove("hidden");
+  } else {
+    fileMeta.textContent = "PNG, JPG, WEBP";
+    preview.src = "";
+    preview.classList.add("hidden");
+  }
 });
+
 form.addEventListener("submit", submitPrediction);
 resetButton.addEventListener("click", resetUi);
 
