@@ -156,10 +156,11 @@ function renderResult(result) {
       notesBox.style.borderLeftColor = "var(--healthy-accent)";
   }
 
-  // Animate Gauge (Speedometer)
+  // Animate Gauge to show the dominant "Confidence"
   const gaugeFill = document.querySelector("#gaugeFill");
   const gaugeReadout = document.querySelector("#gaugeReadout");
-  const gaugeOffset = 126 - (126 * unhealthyProb);
+  const confidence = isUnhealthy ? unhealthyProb : healthyProb;
+  const gaugeOffset = 126 - (126 * confidence);
   
   setTimeout(() => {
       document.querySelector("#healthyBar").style.width = `${Math.min(100, healthyProb * 100)}%`;
@@ -167,7 +168,7 @@ function renderResult(result) {
       
       gaugeFill.style.strokeDashoffset = gaugeOffset;
       gaugeFill.style.stroke = isUnhealthy ? "var(--pathology-accent)" : "var(--healthy-accent)";
-      gaugeReadout.textContent = asPercent(unhealthyProb);
+      gaugeReadout.textContent = asPercent(confidence);
       gaugeReadout.style.color = isUnhealthy ? "var(--pathology-accent)" : "var(--healthy-accent)";
   }, 50);
 
@@ -191,17 +192,41 @@ function renderDisease(disease) {
   const scores = document.querySelector("#diseaseScores");
   scores.innerHTML = "";
   if (!disease) { card.classList.add("hidden"); return; }
+  
   document.querySelector("#diseaseLabel").textContent = disease.label_name || `Sub-class ${disease.label}`;
-  Object.entries(disease.probs_by_label || {}).forEach(([name, value]) => {
+  const entries = Object.entries(disease.probs_by_label || {});
+
+  // Add a pathology counter 
+  if (entries.length > 0) {
+      const counterInfo = document.createElement("div");
+      counterInfo.className = "disease-counter";
+      counterInfo.innerHTML = `<i class="fa-solid fa-virus-covid"></i> <strong>${entries.length}</strong> specific pathologies evaluated:`;
+      scores.appendChild(counterInfo);
+  }
+
+  entries.forEach(([name, value]) => {
     const row = document.createElement("div");
     row.className = "mini-score-row";
-    row.innerHTML = `<span>${name.toUpperCase()}</span> <strong>${asPercent(value)}</strong>`;
+    row.style.marginBottom = "12px";
+    row.innerHTML = `
+      <div class="mini-score-header">
+          <span>${name.toUpperCase()}</span> <strong>${asPercent(value)}</strong>
+      </div>
+      <div class="disease-score-track">
+          <div class="disease-score-fill" style="width: 0%"></div>
+      </div>
+    `;
     scores.appendChild(row);
+
+    // Animate the bar filling up
+    setTimeout(() => {
+        row.querySelector(".disease-score-fill").style.width = `${Math.min(100, value * 100)}%`;
+    }, 50);
   });
+  
   card.classList.remove("hidden");
 }
 
-// Fixed function: Removes conditional flipping logic so probabilities map directly to 1 (Pathology)
 function renderModels(models) {
   const container = document.querySelector("#modelDetails");
   container.innerHTML = "";
@@ -263,7 +288,7 @@ function resetUi() {
 
 modeButtons.forEach((btn) => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
 
-// Added logic to inject an image preview via Object URL
+// Inject an image preview via Object URL
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
   const preview = document.querySelector("#uploadPreview");
