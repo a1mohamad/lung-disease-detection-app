@@ -78,7 +78,7 @@ body {
 .mode-view.active { display: block; animation: fadeUp 0.3s ease; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Modified Upload Zone for Image Preview */
+/* Upload Zone for Image Preview */
 .upload-zone { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 180px; border: 1px dashed var(--text-muted); border-radius: 16px; cursor: pointer; transition: all 0.2s ease; }
 .upload-zone:hover { border-color: var(--brand-accent); background: rgba(59,130,246,0.05); }
 .upload-zone input { display: none; }
@@ -107,7 +107,7 @@ body {
 .verdict-badge.healthy { background: var(--healthy-bg); color: var(--healthy-accent); border: 1px solid var(--healthy-accent); }
 .verdict-badge.unhealthy { background: var(--pathology-bg); color: var(--pathology-accent); border: 1px solid var(--pathology-accent); }
 
-/* Gauge styling fixed to avoid text overlap */
+/* Gauge styling */
 .gauge-container { position: relative; width: 140px; text-align: center; padding-bottom: 24px; }
 .gauge-svg { display: block; width: 100%; overflow: visible; }
 .gauge-bg { stroke: rgba(255,255,255,0.1); }
@@ -135,7 +135,8 @@ body {
 /* Vision Grid & Lightbox */
 .vision-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 .vision-stage { position: relative; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--panel-border); aspect-ratio: 1/1;}
-.vision-stage img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; transition: opacity 0.3s, transform 0.3s; cursor: zoom-in; }
+/* Updated object-fit to contain to prevent cropping the raw image */
+.vision-stage img { width: 100%; height: 100%; object-fit: contain; opacity: 0.8; transition: opacity 0.3s, transform 0.3s; cursor: zoom-in; }
 .vision-stage:hover img { opacity: 1; transform: scale(1.05); }
 .vision-stage span { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; pointer-events: none; }
 
@@ -158,9 +159,13 @@ body {
 .mini-prob-bar-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; }
 .mini-prob-fill { height: 100%; width: 0%; transition: width 1s; }
 
+/* Disease Classifiers */
 .disease-sub-card { padding: 16px; background: var(--panel-bg); border-radius: 12px; margin-bottom: 24px; border: 1px solid var(--panel-border); }
-.mini-scores { margin-top: 12px; display: grid; gap: 8px; }
-.mini-score-row { display: flex; justify-content: space-between; font-size: 0.9rem; }
+.mini-scores { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.disease-counter { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+.disease-score-track { width: 100%; height: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+.disease-score-fill { height: 100%; background: var(--pathology-accent); border-radius: 3px; transition: width 1s cubic-bezier(0.16, 1, 0.3, 1); }
+.mini-score-header { display: flex; justify-content: space-between; font-size: 0.9rem; }
 
 /* Final Note Block */
 .final-note-content p { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px; }
