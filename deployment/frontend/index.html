@@ -1,202 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lung Disease Detection | Precision Diagnostics</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>Lung Disease Detection</title>
+    <meta name="description" content="Lung Disease Detection — built on Replit. Update this description to reflect the app." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="Lung Disease Detection" />
+    <meta property="og:description" content="Lung Disease Detection — built on Replit. Update this description to reflect the app." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lung Disease Detection" />
+    <meta name="twitter:description" content="Lung Disease Detection — built on Replit. Update this description to reflect the app." />
+    <link rel="icon" type="image/svg+xml" href="/ui/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="./styles.css" />
-</head>
-<body>
-
-    <div class="ambient-glow"></div>
-
-    <div class="app-container">
-        
-        <header class="top-ribbon">
-            <div class="brand">
-                <div class="brand-logo"><i class="fa-solid fa-lungs"></i></div>
-                <div class="brand-text">
-                    <h1>Lung Disease Detection</h1>
-                    <span>AI Respiratory Diagnostics</span>
-                </div>
-            </div>
-            <div class="header-actions">
-                <a href="https://github.com/a1mohamad/lung-disease-detection-app" target="_blank" class="github-source-btn">
-                    <i class="fa-brands fa-github"></i> Source Code
-                </a>
-                <div class="system-status" id="apiStatus">
-                    <div class="pulse-dot"></div> System Initializing...
-                </div>
-            </div>
-        </header>
-
-        <main class="bento-grid">
-            
-            <section class="bento-panel input-panel">
-                <div class="panel-header">
-                    <h2>Inference Source</h2>
-                    <p>Please select your input method below to provide a lung X-Ray or MRI scan. You can upload a file, provide a direct URL, or paste a Base64 encoded image string.</p>
-                </div>
-
-                <div class="segmented-control" role="tablist">
-                    <button class="segment active" data-mode="upload">File</button>
-                    <button class="segment" data-mode="url">URL</button>
-                    <button class="segment" data-mode="base64">Base64</button>
-                </div>
-
-                <form id="predictForm">
-                    <div class="mode-view active" data-view="upload">
-                        <label class="upload-zone" for="imageFile" id="uploadZone">
-                            <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" />
-                            <img id="uploadPreview" class="hidden" alt="X-Ray Preview" />
-                            <div class="upload-content">
-                                <i class="fa-solid fa-arrow-up-from-bracket"></i>
-                                <span class="upload-title">Drop X-Ray Here</span>
-                                <span class="upload-meta" id="fileMeta">PNG, JPG, WEBP</span>
-                            </div>
-                        </label>
-                    </div>
-
-                    <div class="mode-view" data-view="url">
-                        <input class="modern-input" id="imageUrl" type="url" placeholder="Paste image endpoint URL..." />
-                    </div>
-
-                    <div class="mode-view" data-view="base64">
-                        <textarea class="modern-input" id="imageBase64" rows="3" placeholder="Paste Base64 string..."></textarea>
-                    </div>
-
-                    <div class="action-row">
-                        <button id="analyzeButton" class="btn-primary" type="submit">Execute Analysis</button>
-                        <button id="resetButton" class="btn-icon" type="button" title="Reset UI"><i class="fa-solid fa-rotate-right"></i></button>
-                    </div>
-                </form>
-                <div id="messagePanel" class="error-toast hidden"></div>
-            </section>
-
-            <section class="bento-panel results-primary hidden" id="resultPrimary">
-                <div class="diagnosis-header">
-                    <div class="diagnosis-titles">
-                        <span class="sub-label">Final Classification</span>
-                        <h2 id="finalLabel">Waiting...</h2>
-                        <div class="verdict-badge" id="decisionBadge">Standby</div>
-                    </div>
-                    
-                    <div class="gauge-container">
-                        <svg viewBox="0 0 100 55" class="gauge-svg">
-                            <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="8" stroke-linecap="round"></path>
-                            <path class="gauge-fill" id="gaugeFill" d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke-width="8" stroke-linecap="round"></path>
-                        </svg>
-                        <div class="gauge-readout" id="gaugeReadout">0%</div>
-                        <div class="gauge-label">Confidence Level</div>
-                    </div>
-                </div>
-
-                <div class="probability-split">
-                    <div class="prob-card healthy-card">
-                        <div class="prob-header">
-                            <i class="fa-solid fa-shield-heart"></i> Healthy Probability
-                        </div>
-                        <div class="prob-value" id="healthyScore">0.0%</div>
-                        <div class="prob-bar-bg">
-                            <div class="prob-bar-fill healthy-fill" id="healthyBar"></div>
-                        </div>
-                    </div>
-
-                    <div class="prob-card pathology-card">
-                        <div class="prob-header">
-                            <i class="fa-solid fa-virus"></i> Pathology Detected
-                        </div>
-                        <div class="prob-value" id="unhealthyScore">0.0%</div>
-                        <div class="prob-bar-bg">
-                            <div class="prob-bar-fill pathology-fill" id="unhealthyBar"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="clinical-notes" id="clinicalNotesBox">
-                    <div class="notes-title"><i class="fa-solid fa-stethoscope"></i> Clinical Advisory Note</div>
-                    <p id="clinicalNotesText">Awaiting computational analysis...</p>
-                </div>
-            </section>
-
-            <section class="bento-panel pipeline-panel hidden" id="resultPipeline">
-                <div class="panel-header">
-                    <h2>Spatial Pipeline</h2>
-                    <p>Click images to expand structural matrix</p>
-                </div>
-                <div class="vision-grid">
-                    <div class="vision-stage">
-                        <img id="sourceImage" alt="Source" class="zoomable" />
-                        <span>RAW</span>
-                    </div>
-                    <div class="vision-stage">
-                        <img id="roiImage" alt="ROI" class="zoomable" />
-                        <span>ROI</span>
-                    </div>
-                    <div class="vision-stage">
-                        <img id="maskImage" alt="Mask" class="zoomable" />
-                        <span>MASK</span>
-                    </div>
-                    <div class="vision-stage">
-                        <img id="overlayImage" alt="Overlay" class="zoomable" />
-                        <span>FUSION</span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="bento-panel ensemble-panel hidden" id="resultEnsemble">
-                <div class="panel-header">
-                    <h2>Ensemble Telemetry</h2>
-                    <p>Sub-network dual probability tracking</p>
-                </div>
-                
-                <div id="diseaseCard" class="hidden disease-sub-card">
-                    <span class="sub-label">Disease Classifier Breakdown</span>
-                    <h3 id="diseaseLabel">-</h3>
-                    <div id="diseaseScores" class="mini-scores"></div>
-                </div>
-
-                <div class="model-matrix" id="modelDetails">
-                    </div>
-            </section>
-
-            <section class="bento-panel ethics-panel">
-                <div class="panel-header">
-                    <h2>Final Note</h2>
-                </div>
-                <div class="final-note-content">
-                    <p>Over a rigorous 9-month development cycle, these architectures were meticulously fine-tuned and trained on approximately 23,000 MRI and X-Ray images sourced globally. This deep learning ensemble achieved a <strong>90% accuracy rate</strong> on independent test datasets.</p>
-                    <p class="ethics-disclaimer">
-                        <i class="fa-solid fa-triangle-exclamation"></i> <strong>Disclaimer:</strong> AI systems can make mistakes and should never replace real doctors. Always correlate outputs with clinical history and professional medical judgment.
-                    </p>
-                </div>
-            </section>
-
-        </main>
-    </div>
-
-    <footer class="global-footer">
-        <div class="footer-links">
-            <a href="mailto:a1.mohamad.askari@gmail.com" class="footer-link"><i class="fa-solid fa-envelope"></i> Gmail</a>
-            <a href="mailto:amirmohmdaskari@gmail.com" class="footer-link"><i class="fa-brands fa-apple"></i> iCloud</a>
-            <a href="tel:+989012223122" class="footer-link"><i class="fa-solid fa-phone"></i> Phone</a>
-            <a href="https://github.com/a1mohamad" target="_blank" class="footer-link"><i class="fa-brands fa-github"></i> GitHub</a>
-            <a href="https://www.linkedin.com/in/amirmohammad-askari/" target="_blank" class="footer-link"><i class="fa-brands fa-linkedin"></i> LinkedIn</a>
-            <a href="https://www.kaggle.com/amirmohamadaskari" target="_blank" class="footer-link"><i class="fa-brands fa-kaggle"></i> Kaggle</a>
-        </div>
-        <div class="ai-warning">AI can make mistakes. Check important info.</div>
-        <div class="copyright">&copy; 2026 Amir Mohamad Askari &bull; All Research Open Sourced via Apache License</div>
-    </footer>
-
-    <div id="lightboxOverlay" class="lightbox hidden">
-        <button id="lightboxClose" class="lightbox-close"><i class="fa-solid fa-xmark"></i></button>
-        <img id="lightboxImage" src="" alt="Zoomed View" />
-    </div>
-
-    <script src="./app.js"></script>
-</body>
+    <script type="module" crossorigin src="/ui/index-DwG8xpxt.js"></script>
+    <link rel="stylesheet" crossorigin href="/ui/index-CCPncw3t.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
