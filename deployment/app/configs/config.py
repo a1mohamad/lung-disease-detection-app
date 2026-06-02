@@ -57,6 +57,13 @@ class AppConfig:
     DB_TRUST_SERVER_CERTIFICATE = os.getenv("DB_TRUST_SERVER_CERTIFICATE", "yes")
     DB_ECHO = os.getenv("DB_ECHO", "false").lower() == "true"
     DB_LOGGING_ENABLED = os.getenv("DB_LOGGING_ENABLED", "true").lower() == "true"
+    # Database backend: "mssql" (default, local full stack) or "postgres" (cloud deploy).
+    DB_BACKEND = os.getenv("DB_BACKEND", "mssql").lower()
+    # Full SQLAlchemy URL. When set it takes precedence over the discrete DB_* vars.
+    # Render/Railway inject this automatically for their managed Postgres.
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
+    # Optional Postgres TLS mode (managed Postgres usually needs "require").
+    DB_SSLMODE = os.getenv("DB_SSLMODE", "")
     LOGS_API_KEY = os.getenv("LOGS_API_KEY", "")
     KAFKA_ENABLED = os.getenv("KAFKA_ENABLED", "true").lower() == "true"
     KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092")
@@ -91,6 +98,43 @@ class AppConfig:
 
     @staticmethod
     def get_database_url() -> str:
+        # 1. Explicit full URL wins (12-factor; Render/Railway inject DATABASE_URL).
+        if AppConfig.DATABASE_URL:
+            return AppConfig._normalize_database_url(AppConfig.DATABASE_URL)
+
+        # 2. Discrete vars, by backend.
+        if AppConfig.DB_BACKEND == "postgres":
+            return AppConfig._build_postgres_url()
+
+        # 3. Default: SQL Server (existing local behavior).
+        return AppConfig._build_mssql_url()
+
+    @staticmethod
+    def _normalize_database_url(url: str) -> str:
+        # Normalize the bare schemes some providers emit so SQLAlchemy uses psycopg2.
+        if url.startswith("postgres://"):
+            return "postgresql+psycopg2://" + url[len("postgres://"):]
+        if url.startswith("postgresql://"):
+            return "postgresql+psycopg2://" + url[len("postgresql://"):]
+        return url
+
+    @staticmethod
+    def _build_postgres_url() -> str:
+        user = quote_plus(AppConfig.DB_USER)
+        password = quote_plus(AppConfig.DB_PASSWORD)
+        host = AppConfig.DB_HOST
+        port = AppConfig.DB_PORT.strip() if AppConfig.DB_PORT else ""
+        # Fall back to the Postgres default port when unset or left at the MSSQL default.
+        if port in ("", "1433"):
+            port = "5432"
+
+        url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{AppConfig.DB_NAME}"
+        if AppConfig.DB_SSLMODE:
+            url += f"?sslmode={AppConfig.DB_SSLMODE}"
+        return url
+
+    @staticmethod
+    def _build_mssql_url() -> str:
         user = quote_plus(AppConfig.DB_USER)
         password = quote_plus(AppConfig.DB_PASSWORD)
         driver = quote_plus(AppConfig.DB_DRIVER)

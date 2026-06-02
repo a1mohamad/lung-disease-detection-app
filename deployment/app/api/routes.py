@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, File, Header, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.configs.config import AppConfig
-from app.db.crud import get_prediction_logs
-from app.db.session import get_db
+from app.db.crud import get_prediction_logs, log_prediction
+from app.db.session import SessionLocal, get_db
 from app.schemas.health import HealthResponse
 from app.schemas.logs import PredictionLogsResponse
 from app.schemas.request import PredictRequest
@@ -29,6 +29,28 @@ def _detect_input_type(req: PredictRequest) -> str:
     if req.image_base64:
         return "base64"
     return "unknown"
+
+
+def _persist_prediction_log(*, request_id: str, input_type: str, response: dict) -> None:
+    """Write a prediction straight to the DB when Kafka is disabled.
+
+    With Kafka enabled the DB consumer owns this write, so callers must gate on
+    KAFKA_ENABLED to avoid double-logging the same prediction.
+    """
+    if SessionLocal is None:
+        return
+    db = SessionLocal()
+    try:
+        log_prediction(
+            db=db,
+            request_id=request_id,
+            input_type=input_type,
+            response=response,
+        )
+    except Exception as exc:
+        logger.exception("Direct DB log failed: %s", exc)
+    finally:
+        db.close()
 
 
 def _authorize_logs(x_api_key: str | None) -> None:
@@ -73,6 +95,12 @@ def predict_json(
             publish_prediction_event(request_id=request_id, event=event)
         except Exception as exc:
             logger.exception("Kafka publish failed: %s", exc)
+    elif AppConfig.DB_LOGGING_ENABLED:
+        _persist_prediction_log(
+            request_id=request_id,
+            input_type=_detect_input_type(req),
+            response=response,
+        )
 
     return response
 
@@ -100,6 +128,12 @@ async def predict_upload(
             publish_prediction_event(request_id=request_id, event=event)
         except Exception as exc:
             logger.exception("Kafka publish failed: %s", exc)
+    elif AppConfig.DB_LOGGING_ENABLED:
+        _persist_prediction_log(
+            request_id=request_id,
+            input_type="upload",
+            response=response,
+        )
 
     return response
 
