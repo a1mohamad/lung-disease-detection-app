@@ -5,15 +5,15 @@ services:
   db-runtime:
     image: postgres:16
     environment:
-      POSTGRES_USER: lung
-      POSTGRES_PASSWORD: lung
+      POSTGRES_USER: a1mohamad
+      POSTGRES_PASSWORD: math3141
       POSTGRES_DB: lung_detection
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - pg_runtime_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lung -d lung_detection"]
+      test: ["CMD-SHELL", "pg_isready -U a1mohamad -d lung_detection"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -28,7 +28,7 @@ services:
     # DB connection points at the bundled Postgres by default. For a fully stateless
     # deploy set DB_LOGGING_ENABLED=false in .env.runtime (the app then needs no DB).
     environment:
-      DATABASE_URL: "${DATABASE_URL:-postgresql+psycopg2://lung:lung@db-runtime:5432/lung_detection}"
+      DATABASE_URL: "${DATABASE_URL:-postgresql+psycopg2://a1mohamad:math3141@db-runtime:5432/lung_detection}"
     depends_on:
       db-runtime:
         condition: service_healthy
@@ -42,6 +42,7 @@ services:
         [
           "CMD",
           "python",
+          "box",
           "-c",
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
         ]
