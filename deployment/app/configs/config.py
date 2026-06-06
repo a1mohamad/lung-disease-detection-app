@@ -105,6 +105,13 @@ class AppConfig:
     MLFLOW_MODEL_NAME_DISEASES = os.getenv("MLFLOW_MODEL_NAME_DISEASES", "lung-diseases-densenet")
     MLFLOW_MODEL_NAME_SEGMENTATION = os.getenv("MLFLOW_MODEL_NAME_SEGMENTATION", "lung-segmentation-unet-xception")
 
+    HF_MODEL_DOWNLOAD_ENABLED = os.getenv("HF_MODEL_DOWNLOAD_ENABLED", "false").lower() == "true"
+    HF_MODEL_REPO_ID = os.getenv("HF_MODEL_REPO_ID", "a1mohamadd/lung-disease-detection")
+    HF_MODEL_REPO_TYPE = os.getenv("HF_MODEL_REPO_TYPE", "model")
+    HF_MODEL_REVISION = os.getenv("HF_MODEL_REVISION", "main")
+    HF_MODEL_REPO_SUBDIR = os.getenv("HF_MODEL_REPO_SUBDIR", "").strip("/")
+    HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN", "")
+
     @staticmethod
     def get_metadata_path(model_dir: Path) -> Path:
         ''' Returns the path to the metadata.yaml inside a specific model folder '''
