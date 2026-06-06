@@ -14,3 +14,4 @@ psycopg2-binary==2.9.10
 alembic==1.18.4
 confluent-kafka==2.13.0
 mlflow==3.10.0
+huggingface-hub==1.2.1
