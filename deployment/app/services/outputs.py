@@ -41,7 +41,11 @@ def save_output_images(
     _save_roi(roi_img, roi_path)
     _save_overlay_image_mask(source_image, mask, overlay_path)
 
-    links = {
+    artifacts = {
+        "source_path": _artifact_path(rel_dir, source_path),
+        "mask_path": _artifact_path(rel_dir, mask_path),
+        "roi_path": _artifact_path(rel_dir, roi_path),
+        "overlay_path": _artifact_path(rel_dir, overlay_path),
         "source_url": _artifact_url(rel_dir, source_path),
         "mask_url": _artifact_url(rel_dir, mask_path),
         "roi_url": _artifact_url(rel_dir, roi_path),
@@ -57,6 +61,12 @@ def save_output_images(
                 "roi_url": roi_path,
                 "overlay_url": overlay_path,
             },
+            paths={
+                "source_path": artifacts["source_path"],
+                "mask_path": artifacts["mask_path"],
+                "roi_path": artifacts["roi_path"],
+                "overlay_path": artifacts["overlay_path"],
+            },
         )
 
     if AppConfig.PREDICTION_STORAGE_BACKEND != "local":
@@ -65,7 +75,11 @@ def save_output_images(
             f"Unsupported prediction storage backend: {AppConfig.PREDICTION_STORAGE_BACKEND}",
         )
 
-    return links
+    return artifacts
+
+
+def _artifact_path(rel_dir: str, path: Path) -> str:
+    return f"predictions/{rel_dir}/{path.name}"
 
 
 def _artifact_url(rel_dir: str, path: Path) -> str:
@@ -76,6 +90,7 @@ def _upload_prediction_files_to_supabase(
     *,
     rel_dir: str,
     files: dict[str, Path],
+    paths: dict[str, str],
 ) -> dict[str, str]:
     if not AppConfig.SUPABASE_URL or not AppConfig.SUPABASE_SERVICE_ROLE_KEY:
         raise ServiceError(
@@ -83,20 +98,20 @@ def _upload_prediction_files_to_supabase(
             "Supabase storage is enabled but SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing.",
         )
 
-    links = {}
+    artifacts = dict(paths)
     uploaded_paths = []
     for response_key, file_path in files.items():
         object_path = f"predictions/{rel_dir}/{file_path.name}"
         try:
             _supabase_upload(object_path=object_path, file_path=file_path)
             uploaded_paths.append(object_path)
-            links[response_key] = _supabase_signed_url(object_path=object_path)
+            artifacts[response_key] = _supabase_signed_url(object_path=object_path)
         except Exception:
             _cleanup_supabase_objects(uploaded_paths)
             raise
 
     _cleanup_local_prediction_dir(files.values())
-    return links
+    return artifacts
 
 
 def _supabase_upload(*, object_path: str, file_path: Path) -> None:
