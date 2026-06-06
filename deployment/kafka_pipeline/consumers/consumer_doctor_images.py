@@ -30,6 +30,10 @@ def main() -> None:
                 "mask_url": payload.get("mask_url"),
                 "roi_url": payload.get("roi_url"),
                 "overlay_url": payload.get("overlay_url"),
+                "source_path": payload.get("source_path"),
+                "mask_path": payload.get("mask_path"),
+                "roi_path": payload.get("roi_path"),
+                "overlay_path": payload.get("overlay_path"),
             }
             append_jsonl(OUT, out)
     finally:
