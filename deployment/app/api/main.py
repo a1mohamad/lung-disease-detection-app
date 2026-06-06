@@ -15,6 +15,16 @@ from fastapi.staticfiles import StaticFiles
 from kafka_pipeline.producer import close_kafka_producer, init_kafka_producer
 
 
+class SPAStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except Exception as exc:
+            if getattr(exc, "status_code", None) == 404:
+                return await super().get_response("index.html", scope)
+            raise
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup: place any init logic here
@@ -45,4 +55,4 @@ register_exception_handlers(app)
 app.include_router(router)
 app.mount("/static", StaticFiles(directory=AppConfig.ASSETS_DIR), name="static")
 if AppConfig.FRONTEND_DIR.exists():
-    app.mount("/ui", StaticFiles(directory=AppConfig.FRONTEND_DIR, html=True), name="ui")
+    app.mount("/ui", SPAStaticFiles(directory=AppConfig.FRONTEND_DIR, html=True), name="ui")
