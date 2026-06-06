@@ -14,11 +14,15 @@ def _delivery_report(err, msg) -> None:
 
 
 def _producer_config() -> dict[str, str]:
+    security_protocol = AppConfig.KAFKA_SECURITY_PROTOCOL
     conf = {
         "bootstrap.servers": AppConfig.KAFKA_BOOTSTRAP_SERVERS,
         "client.id": AppConfig.KAFKA_CLIENT_ID,
-        "security.protocol": AppConfig.KAFKA_SECURITY_PROTOCOL,
+        "security.protocol": security_protocol,
     }
+
+    if "SASL" not in security_protocol.upper():
+        return conf
 
     if AppConfig.KAFKA_SASL_MECHANISM:
         conf["sasl.mechanism"] = AppConfig.KAFKA_SASL_MECHANISM
