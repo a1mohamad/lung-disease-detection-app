@@ -142,6 +142,8 @@ def _supabase_signed_url(*, object_path: str) -> str:
         )
     if signed_url.startswith("http"):
         return signed_url
+    if signed_url.startswith("/object/"):
+        return f"{AppConfig.SUPABASE_URL}/storage/v1{signed_url}"
     return f"{AppConfig.SUPABASE_URL}{signed_url}"
 
 
