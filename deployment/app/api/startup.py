@@ -8,10 +8,13 @@ from app.db import models  # noqa: F401
 from app.db.session import engine
 from app.predictor.pipeline import LungDetection
 from app.utils.errors import ArtifactError
+from app.utils.hf_models import ensure_models_available_from_huggingface
 from app.utils.metadata import load_metadata
 
 
 def check_paths_and_metadata() -> None:
+    ensure_models_available_from_huggingface()
+
     # model directories
     required_dirs = [
         AppConfig.UNET_PATH,
