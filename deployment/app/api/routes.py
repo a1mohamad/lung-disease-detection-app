@@ -192,6 +192,10 @@ def get_logs(
                 "mask_url": r.image_links.mask_url if r.image_links else None,
                 "roi_url": r.image_links.roi_url if r.image_links else None,
                 "overlay_url": r.image_links.overlay_url if r.image_links else None,
+                "source_path": r.image_links.source_path if r.image_links else None,
+                "mask_path": r.image_links.mask_path if r.image_links else None,
+                "roi_path": r.image_links.roi_path if r.image_links else None,
+                "overlay_path": r.image_links.overlay_path if r.image_links else None,
             },
             "created_at": r.created_at,
         }
