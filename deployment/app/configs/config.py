@@ -61,6 +61,7 @@ class AppConfig:
 
     # 6. GLOBAL PARAMETERS
     IMAGE_SIZE = (256, 256)
+    MODEL_RUNTIME = os.getenv("MODEL_RUNTIME", "keras").lower()
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = os.getenv("DB_PORT", "1433")
     DB_NAME = os.getenv("DB_NAME", "lung_detection")

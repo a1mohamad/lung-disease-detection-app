@@ -4,14 +4,43 @@ import tensorflow as tf
 from app.configs.config import AppConfig
 from app.preprocessing.roi import crop_lung_roi
 
-from app.predictor.segmentation import SegmentationModel
-from app.predictor.classification import (BinaryClassificationModel, 
-                                          EnsembleBinaryClassifier)
-from app.predictor.diseases import DiseasesClassifier
-
 
 class LungDetection:
     def __init__(self) -> None:
+        if AppConfig.MODEL_RUNTIME == "onnx":
+            from app.predictor.classification_onnx import (
+                BinaryClassificationOnnxModel,
+                EnsembleBinaryOnnxClassifier,
+            )
+            from app.predictor.diseases_onnx import DiseasesOnnxClassifier
+            from app.predictor.segmentation_onnx import SegmentationOnnxModel
+
+            self.seg_model = SegmentationOnnxModel(AppConfig.UNET_PATH)
+            self.binary_models = {
+                "densenet": BinaryClassificationOnnxModel(
+                    AppConfig.DENSENET_PATH, AppConfig.MLFLOW_MODEL_NAME_DENSENET_BINARY
+                ),
+                "efficientnet": BinaryClassificationOnnxModel(
+                    AppConfig.EFFICIENTNET_PATH, AppConfig.MLFLOW_MODEL_NAME_EFFICIENTNET_BINARY
+                ),
+                "inception_v3": BinaryClassificationOnnxModel(
+                    AppConfig.INCEPTION_PATH, AppConfig.MLFLOW_MODEL_NAME_INCEPTION_BINARY
+                ),
+                "mobilenet_v3": BinaryClassificationOnnxModel(
+                    AppConfig.MOBILENET_PATH, AppConfig.MLFLOW_MODEL_NAME_MOBILENET_BINARY
+                ),
+            }
+            self.ensemble = EnsembleBinaryOnnxClassifier(self.binary_models)
+            self.disease_model = DiseasesOnnxClassifier(AppConfig.DISEASE_DENSENET_PATH)
+            return
+
+        from app.predictor.classification import (
+            BinaryClassificationModel,
+            EnsembleBinaryClassifier,
+        )
+        from app.predictor.diseases import DiseasesClassifier
+        from app.predictor.segmentation import SegmentationModel
+
         self.seg_model = SegmentationModel(AppConfig.UNET_PATH)
 
         self.binary_models = {
