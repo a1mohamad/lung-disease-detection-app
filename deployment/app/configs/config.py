@@ -44,6 +44,20 @@ class AppConfig:
     CLASSIFICATION_JSON = ASSETS_DIR / "healthy_unhealthy_mapping.json"
     DISEASES_JSON = ASSETS_DIR / "diseases_mapping.json"
     PREDICTION_DIR = ASSETS_DIR / "predictions"
+    PREDICTION_STORAGE_BACKEND = os.getenv("PREDICTION_STORAGE_BACKEND", "local").lower()
+    PREDICTION_PUBLIC_BASE_URL = os.getenv(
+        "PREDICTION_PUBLIC_BASE_URL",
+        "/static/predictions",
+    ).rstrip("/")
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    SUPABASE_STORAGE_BUCKET = os.getenv(
+        "SUPABASE_STORAGE_BUCKET",
+        "lung-detection-predictions",
+    )
+    SUPABASE_SIGNED_URL_EXPIRES_SECONDS = int(
+        os.getenv("SUPABASE_SIGNED_URL_EXPIRES_SECONDS", "3600")
+    )
 
     # 6. GLOBAL PARAMETERS
     IMAGE_SIZE = (256, 256)
