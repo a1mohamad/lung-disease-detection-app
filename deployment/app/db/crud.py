@@ -43,6 +43,10 @@ def log_prediction(
         mask_url=response.get("mask_url"),
         roi_url=response.get("roi_url"),
         overlay_url=response.get("overlay_url"),
+        source_path=response.get("source_path"),
+        mask_path=response.get("mask_path"),
+        roi_path=response.get("roi_path"),
+        overlay_path=response.get("overlay_path"),
     )
     db.add(image_links)
 
