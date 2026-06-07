@@ -6,7 +6,6 @@ from pathlib import Path
 
 import numpy as np
 import tensorflow as tf
-import yaml
 from keras.models import load_model
 
 
@@ -14,15 +13,22 @@ DEPLOYMENT_DIR = Path(__file__).resolve().parents[2]
 if str(DEPLOYMENT_DIR) not in sys.path:
     sys.path.insert(0, str(DEPLOYMENT_DIR))
 
+from app.configs.constants import (  # noqa: E402
+    ONNX_VALIDATION_DEFAULT_ATOL,
+    ONNX_VALIDATION_DEFAULT_RTOL,
+    ONNX_VALIDATION_RANDOM_SEED,
+)
+from app.utils.metadata import load_metadata  # noqa: E402
 from app.utils.metrics import dice_coefficient  # noqa: E402
+from app.utils.onnx_loader import get_onnx_model_path  # noqa: E402
 from export_models import MODEL_SPECS, infer_input_shape  # noqa: E402
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compare Keras and ONNX outputs.")
     parser.add_argument("--only", choices=[spec.name for spec in MODEL_SPECS], default=None)
-    parser.add_argument("--rtol", type=float, default=1e-3)
-    parser.add_argument("--atol", type=float, default=1e-3)
+    parser.add_argument("--rtol", type=float, default=ONNX_VALIDATION_DEFAULT_RTOL)
+    parser.add_argument("--atol", type=float, default=ONNX_VALIDATION_DEFAULT_ATOL)
     args = parser.parse_args()
 
     try:
@@ -44,7 +50,7 @@ def main() -> None:
 def validate_model(spec, *, ort, rtol: float, atol: float) -> bool:
     metadata = load_metadata(spec.model_dir)
     keras_path = spec.model_dir / metadata["model"]["path"]
-    onnx_path = spec.model_dir / f"{keras_path.stem}.onnx"
+    onnx_path = get_onnx_model_path(spec.model_dir, metadata)
     if not onnx_path.exists():
         print(f"[missing] {spec.name}: {onnx_path}")
         return False
@@ -70,17 +76,12 @@ def validate_model(spec, *, ort, rtol: float, atol: float) -> bool:
     return ok
 
 
-def load_metadata(model_dir: Path) -> dict:
-    with (model_dir / "metadata.yaml").open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
 def make_sample(input_shape: list[int | None]) -> np.ndarray:
     shape = [1 if dim is None else dim for dim in input_shape]
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(ONNX_VALIDATION_RANDOM_SEED)
     return rng.uniform(0, 255, size=shape).astype(np.float32)
 
 
 if __name__ == "__main__":
-    tf.random.set_seed(42)
+    tf.random.set_seed(ONNX_VALIDATION_RANDOM_SEED)
     main()
