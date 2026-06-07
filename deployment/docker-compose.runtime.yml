@@ -1,4 +1,23 @@
 services:
+  # Slim deploy topology: app + frontend + Postgres only (no Kafka / MLflow / Airflow).
+  # Mirrors a cloud deploy (Render/Railway) where Postgres is a managed add-on. There you
+  # drop this db-runtime service and point DATABASE_URL at the managed instance instead.
+  db-runtime:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-lung}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.runtime}"
+      POSTGRES_DB: "${POSTGRES_DB:-lung_detection}"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pg_runtime_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lung} -d ${POSTGRES_DB:-lung_detection}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app-runtime:
     image: lung-app-runtime:dev
     build:
@@ -6,12 +25,19 @@ services:
       dockerfile: Dockerfile.runtime
     env_file:
       - .env.runtime
+    # DB connection points at the bundled Postgres by default. For a fully stateless
+    # deploy set DB_LOGGING_ENABLED=false in .env.runtime (the app then needs no DB).
+    environment:
+      DATABASE_URL: "${DATABASE_URL:-postgresql+psycopg2://${POSTGRES_USER:-lung}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.runtime}@db-runtime:5432/${POSTGRES_DB:-lung_detection}}"
+    depends_on:
+      db-runtime:
+        condition: service_healthy
     ports:
       - "${APP_PORT:-8000}:8000"
-    # Runtime flags (DB/Kafka/MLflow/TF) come only from env_file above — not from deployment/.env.
     volumes:
       - ./saved_models:/app/saved_models:ro
       - ./assets:/app/assets
+      - ./runtime/predictions:/app/assets/predictions
     healthcheck:
       test:
         [
@@ -24,3 +50,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+volumes:
+  pg_runtime_data:

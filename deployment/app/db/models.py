@@ -91,9 +91,13 @@ class PredictionImageLink(Base):
         nullable=False,
         unique=True,
     )
-    source_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
-    mask_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
-    roi_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
-    overlay_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mask_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    roi_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    overlay_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mask_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    roi_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    overlay_path: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     prediction: Mapped["PredictionRequest"] = relationship(back_populates="image_links")

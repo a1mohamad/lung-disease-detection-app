@@ -23,3 +23,7 @@ class PredictResponse(BaseModel):
     mask_url: Optional[str] = None
     roi_url: Optional[str] = None
     overlay_url: Optional[str] = None
+    source_path: Optional[str] = None
+    mask_path: Optional[str] = None
+    roi_path: Optional[str] = None
+    overlay_path: Optional[str] = None

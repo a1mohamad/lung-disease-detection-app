@@ -13,13 +13,17 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 
 
 def consumer_config(group_id: str) -> dict[str, str]:
+    security_protocol = os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT")
     conf = {
         "bootstrap.servers": os.getenv("KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9092"),
         "group.id": group_id,
         "auto.offset.reset": "latest",
         "enable.auto.commit": "true",
-        "security.protocol": os.getenv("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+        "security.protocol": security_protocol,
     }
+    if "SASL" not in security_protocol.upper():
+        return conf
+
     if os.getenv("KAFKA_SASL_MECHANISM"):
         conf["sasl.mechanism"] = os.getenv("KAFKA_SASL_MECHANISM", "")
     if os.getenv("KAFKA_SASL_USERNAME"):

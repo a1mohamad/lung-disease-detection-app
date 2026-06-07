@@ -8,6 +8,10 @@ class PredictionImageLinksItem(BaseModel):
     mask_url: str | None = None
     roi_url: str | None = None
     overlay_url: str | None = None
+    source_path: str | None = None
+    mask_path: str | None = None
+    roi_path: str | None = None
+    overlay_path: str | None = None
 
 
 class BinaryModelResultItem(BaseModel):
