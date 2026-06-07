@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 from app.configs.config import AppConfig
+from app.preprocessing.model_preprocessing import preprocess_torch_mode
 from app.preprocessing.transforms import ensure_batch
 from app.utils.errors import ArtifactError, InferenceError
 from app.utils.metadata import load_metadata
@@ -54,7 +55,7 @@ class DiseasesOnnxClassifier:
     def predict(self, roi_img) -> Dict[str, Any]:
         try:
             roi_img = ensure_batch(roi_img)
-            roi_img = _preprocess_densenet(roi_img)
+            roi_img = preprocess_torch_mode(roi_img)
             probs = np.squeeze(self.model.predict(roi_img), axis=0)
             label = int(np.argmax(probs, axis=-1))
             label_name = self.class_map.get(label)
@@ -70,14 +71,7 @@ class DiseasesOnnxClassifier:
             }
         except Exception as exc:
             raise InferenceError(
-                "DISEASES_PREDICT_FAILED",
+            "DISEASES_PREDICT_FAILED",
                 "ONNX diseases prediction failed.",
                 {"error": str(exc), "path": str(self.model_path)},
             ) from exc
-
-
-def _preprocess_densenet(img) -> np.ndarray:
-    arr = np.asarray(img, dtype=np.float32) / 255.0
-    mean = np.asarray([0.485, 0.456, 0.406], dtype=np.float32)
-    std = np.asarray([0.229, 0.224, 0.225], dtype=np.float32)
-    return (arr - mean) / std
