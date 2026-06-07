@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import tensorflow as tf
-import yaml
 from keras.models import load_model
 
 
@@ -14,7 +13,10 @@ DEPLOYMENT_DIR = Path(__file__).resolve().parents[2]
 if str(DEPLOYMENT_DIR) not in sys.path:
     sys.path.insert(0, str(DEPLOYMENT_DIR))
 
+from app.configs.constants import ONNX_EXPORT_DEFAULT_OPSET  # noqa: E402
+from app.utils.metadata import load_metadata  # noqa: E402
 from app.utils.metrics import dice_coefficient  # noqa: E402
+from app.utils.onnx_loader import get_onnx_model_path  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -40,7 +42,7 @@ MODEL_SPECS = (
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export deployment Keras models to ONNX.")
-    parser.add_argument("--opset", type=int, default=13)
+    parser.add_argument("--opset", type=int, default=ONNX_EXPORT_DEFAULT_OPSET)
     parser.add_argument("--only", choices=[spec.name for spec in MODEL_SPECS], default=None)
     args = parser.parse_args()
 
@@ -57,7 +59,7 @@ def main() -> None:
 def export_model(spec: ExportSpec, *, tf2onnx, opset: int) -> None:
     metadata = load_metadata(spec.model_dir)
     keras_path = spec.model_dir / metadata["model"]["path"]
-    onnx_path = spec.model_dir / f"{keras_path.stem}.onnx"
+    onnx_path = get_onnx_model_path(spec.model_dir, metadata)
 
     print(f"[export] {spec.name}: {keras_path.name} -> {onnx_path.name}")
     model = load_model(str(keras_path), custom_objects=spec.custom_objects)
@@ -73,12 +75,6 @@ def export_model(spec: ExportSpec, *, tf2onnx, opset: int) -> None:
         output_path=str(onnx_path),
     )
     print(f"[done] {onnx_path}")
-
-
-def load_metadata(model_dir: Path) -> dict:
-    metadata_path = model_dir / "metadata.yaml"
-    with metadata_path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 def infer_input_shape(*, model, metadata: dict) -> list[int | None]:
