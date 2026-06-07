@@ -1,6 +1,6 @@
 from app.preprocessing.mask import binary_mask_to_rgb_batch
 import numpy as np
-
+from app.preprocessing.model_preprocessing import PREPROCESS_MAP
 from app.preprocessing.roi import crop_lung_roi
 from app.preprocessing.transforms import (
     apply_mask,
@@ -13,22 +13,6 @@ from typing import List, Callable, Dict
 from app.utils.errors import PreprocessError
 
 
-PREPROCESS_MAP = {
-    "inception_v3": lambda img: _preprocess_tf_mode(img),
-    "mobilenet_v3": lambda img: np.asarray(img, dtype=np.float32),
-    "densenet": lambda img: _preprocess_torch_mode(img),
-}
-
-
-def _preprocess_tf_mode(img):
-    return (np.asarray(img, dtype=np.float32) / 127.5) - 1.0
-
-
-def _preprocess_torch_mode(img):
-    arr = np.asarray(img, dtype=np.float32) / 255.0
-    mean = np.asarray([0.485, 0.456, 0.406], dtype=np.float32)
-    std = np.asarray([0.229, 0.224, 0.225], dtype=np.float32)
-    return (arr - mean) / std
 # -----------------------------
 # Pipeline Builder
 # -----------------------------
