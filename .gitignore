@@ -36,6 +36,9 @@ deployment/mlops/mlflow/artifacts/*
 deployment/saved_models/
 research/models/
 
+# Hugging Face credentials
+deployment/scripts/huggingface_hub/*token*.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
