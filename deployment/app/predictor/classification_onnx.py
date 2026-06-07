@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
-import tensorflow as tf
 
 from app.configs.config import AppConfig
 from app.preprocessing.pipeline import build_pipeline, run_pipeline
@@ -70,10 +69,10 @@ class BinaryClassificationOnnxModel:
 
         return {int(k): v for k, v in data.items()}
 
-    def predict(self, img: tf.Tensor, mask: tf.Tensor) -> Tuple[float, int, Optional[str]]:
+    def predict(self, img, mask) -> Tuple[float, int, Optional[str]]:
         try:
             img = run_pipeline(img, mask, self.pipeline)
-            preds = self.model.predict(img.numpy())
+            preds = self.model.predict(img)
             prob = float(np.squeeze(preds))
             label = int(prob >= self.threshold)
             label_name = self.class_map.get(label)
@@ -100,8 +99,8 @@ class EnsembleBinaryOnnxClassifier:
 
     def predict(
         self,
-        img: tf.Tensor,
-        mask: tf.Tensor,
+        img,
+        mask,
         return_all: bool = True,
     ) -> Any:
         per_model: Dict[str, Dict[str, Any]] = {}

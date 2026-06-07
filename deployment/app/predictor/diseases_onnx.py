@@ -4,8 +4,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import numpy as np
-import tensorflow as tf
-from keras.applications.densenet import preprocess_input
 
 from app.configs.config import AppConfig
 from app.preprocessing.transforms import ensure_batch
@@ -27,7 +25,6 @@ class DiseasesOnnxClassifier:
             )
         self.model_path = get_onnx_model_path(model_dir, metadata)
         self.model = OnnxModelSession(self.model_path)
-        self.preprocess = preprocess_input
 
         classes = metadata.get("output", {}).get("classes", None)
         self.class_map = self._normalize_class_map(classes)
@@ -54,11 +51,11 @@ class DiseasesOnnxClassifier:
 
         return {int(k): v for k, v in data.items()}
 
-    def predict(self, roi_img: tf.Tensor) -> Dict[str, Any]:
+    def predict(self, roi_img) -> Dict[str, Any]:
         try:
             roi_img = ensure_batch(roi_img)
-            roi_img = self.preprocess(roi_img)
-            probs = np.squeeze(self.model.predict(roi_img.numpy()), axis=0)
+            roi_img = _preprocess_densenet(roi_img)
+            probs = np.squeeze(self.model.predict(roi_img), axis=0)
             label = int(np.argmax(probs, axis=-1))
             label_name = self.class_map.get(label)
             probs_by_label = {
@@ -77,3 +74,10 @@ class DiseasesOnnxClassifier:
                 "ONNX diseases prediction failed.",
                 {"error": str(exc), "path": str(self.model_path)},
             ) from exc
+
+
+def _preprocess_densenet(img) -> np.ndarray:
+    arr = np.asarray(img, dtype=np.float32) / 255.0
+    mean = np.asarray([0.485, 0.456, 0.406], dtype=np.float32)
+    std = np.asarray([0.229, 0.224, 0.225], dtype=np.float32)
+    return (arr - mean) / std

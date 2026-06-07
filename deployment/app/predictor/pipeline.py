@@ -1,5 +1,4 @@
 from typing import Any, Dict
-import tensorflow as tf
 
 from app.configs.config import AppConfig
 from app.preprocessing.roi import crop_lung_roi
@@ -62,7 +61,7 @@ class LungDetection:
 
         self.disease_model = DiseasesClassifier(AppConfig.DISEASE_DENSENET_PATH)
 
-    def predict(self, img: tf.Tensor, return_all: bool = True) -> Dict[str, Any]:
+    def predict(self, img, return_all: bool = True) -> Dict[str, Any]:
 
         mask = self.seg_model.predict_mask(img)
 

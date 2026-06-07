@@ -6,7 +6,6 @@ from urllib.request import Request, urlopen
 import base64
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
-import tensorflow as tf
 
 from app.utils.errors import ImageLoadError
 
@@ -14,12 +13,12 @@ from app.utils.errors import ImageLoadError
 def load_image(
     image_source: Union[str, Path, IO[bytes], bytes],
     target_size: Optional[Tuple[int, int]],
-) -> tf.Tensor:
+) -> np.ndarray:
     """
-    Load an image from disk with validation and return a 4D tensor.
+    Load an image from disk with validation and return a 4D array.
 
     Returns:
-        tf.Tensor: shape (1, H, W, 3), dtype float32, value range [0, 255]
+        np.ndarray: shape (1, H, W, 3), dtype float32, value range [0, 255]
     """
     path: Optional[Path] = None
     if isinstance(image_source, (str, Path)) and not _is_url(image_source):
@@ -59,7 +58,7 @@ def load_image(
         except Exception:
             pass
 
-    return tf.expand_dims(tf.convert_to_tensor(arr), axis=0)
+    return np.expand_dims(arr, axis=0)
 
 
 def load_bytes_from_source(

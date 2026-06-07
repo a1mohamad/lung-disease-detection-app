@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import numpy as np
-import tensorflow as tf
 
 from app.configs.config import AppConfig
 from app.preprocessing.transforms import normalize_image
@@ -36,14 +35,13 @@ class SegmentationOnnxModel:
         self.is_normalized = inference_cfg.get("normalize", True)
         self.model = OnnxModelSession(self.model_path)
 
-    def predict_mask(self, img: tf.Tensor) -> tf.Tensor:
+    def predict_mask(self, img) -> np.ndarray:
         try:
             if not self.is_normalized:
                 img = normalize_image(img, mode="imagenet")
-            preds = self.model.predict(img.numpy())
+            preds = self.model.predict(img)
             pred_mask = (preds > self.threshold).astype(np.float32)
-            pred_mask = np.squeeze(pred_mask, axis=0)
-            return tf.convert_to_tensor(pred_mask, dtype=tf.float32)
+            return np.squeeze(pred_mask, axis=0)
         except Exception as exc:
             raise InferenceError(
                 "SEGMENTATION_FAILED",
