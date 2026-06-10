@@ -23,6 +23,7 @@ COPY assets/*.json /app/assets/
 
 RUN mkdir -p /app/assets/predictions /app/saved_models
 
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app \
+    PORT=8000
 
-CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
