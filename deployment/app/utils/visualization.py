@@ -1,6 +1,5 @@
 import numpy as np
 from PIL import Image
-import tensorflow as tf
 
 from app.preprocessing.transforms import normalize_image
 
@@ -42,22 +41,22 @@ def plot_prediction_bars(
     plt.tight_layout()
     plt.show()
 
-def visualization(img: tf.Tensor, roi_img: tf.Tensor, mask: tf.Tensor) -> None:
+def visualization(img, roi_img, mask) -> None:
     import matplotlib.pyplot as plt
 
     fig, axs = plt.subplots(1, 3, figsize=(18, 5))
     axs[0].axis("off")
-    img_n = normalize_image(tf.squeeze(img), mode='imagenet')
+    img_n = normalize_image(np.squeeze(img), mode='imagenet')
     axs[0].imshow(img_n)
     axs[0].set_title("Image")
 
     axs[1].axis("off")
-    roi_img_n = normalize_image(tf.squeeze(roi_img), mode='imagenet')
+    roi_img_n = normalize_image(np.squeeze(roi_img), mode='imagenet')
     axs[1].imshow(roi_img_n)
     axs[1].set_title("Cropped ROI")
 
     axs[2].axis("off")
-    axs[2].imshow(tf.squeeze(mask), cmap="gray")
+    axs[2].imshow(np.squeeze(mask), cmap="gray")
     axs[2].set_title("Predicted Mask")
 
     plt.show()

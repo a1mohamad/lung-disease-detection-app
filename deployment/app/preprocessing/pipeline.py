@@ -1,9 +1,6 @@
-from keras.applications.densenet import preprocess_input as dense_preprocess
-from keras.applications.inception_v3 import preprocess_input as incp_preprocess
-from keras.applications.mobilenet_v3 import preprocess_input as mob_preprocess
 from app.preprocessing.mask import binary_mask_to_rgb_batch
-import tensorflow as tf
-
+import numpy as np
+from app.preprocessing.model_preprocessing import PREPROCESS_MAP
 from app.preprocessing.roi import crop_lung_roi
 from app.preprocessing.transforms import (
     apply_mask,
@@ -16,11 +13,6 @@ from typing import List, Callable, Dict
 from app.utils.errors import PreprocessError
 
 
-PREPROCESS_MAP = {
-    "inception_v3": incp_preprocess,
-    "mobilenet_v3": mob_preprocess,
-    "densenet": dense_preprocess
-}
 # -----------------------------
 # Pipeline Builder
 # -----------------------------
@@ -85,17 +77,17 @@ def build_pipeline(config: Dict) -> List[Callable]:
 # -----------------------------
 # Run Pipeline
 # -----------------------------
-def run_pipeline(img: tf.Tensor, mask: tf.Tensor, steps: List[Callable]) -> tf.Tensor:
+def run_pipeline(img, mask, steps: List[Callable]) -> np.ndarray:
     """
     Apply a series of preprocessing steps to an image & mask.
     
     Args:
-        img: tf.Tensor, shape (H, W, C) or (1, H, W, C)
-        mask: tf.Tensor, shape (H, W) or (H, W, 1)
+        img: np.ndarray, shape (H, W, C) or (1, H, W, C)
+        mask: np.ndarray, shape (H, W) or (H, W, 1)
         steps: List of callables of form func(img, mask) -> img
     
     Returns:
-        tf.Tensor: preprocessed image
+        np.ndarray: preprocessed image
     """
     for step in steps:
         result = step(img, mask)

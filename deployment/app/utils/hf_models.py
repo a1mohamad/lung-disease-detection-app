@@ -81,10 +81,23 @@ def _local_models_ready() -> bool:
             metadata = load_metadata(model_dir)
         except ArtifactError:
             return False
-        model_rel_path = metadata.get("model", {}).get("path")
+        model_rel_path = _required_model_rel_path(metadata)
         if not model_rel_path or not (model_dir / model_rel_path).exists():
             return False
     return True
+
+
+def _required_model_rel_path(metadata: dict) -> str | None:
+    model_cfg = metadata.get("model", {})
+    if AppConfig.MODEL_RUNTIME == "onnx":
+        onnx_rel_path = model_cfg.get("onnx_path")
+        if onnx_rel_path:
+            return onnx_rel_path
+        keras_rel_path = model_cfg.get("path")
+        if keras_rel_path:
+            return f"{Path(keras_rel_path).stem}.onnx"
+        return None
+    return model_cfg.get("path")
 
 
 def _allow_patterns() -> list[str]:

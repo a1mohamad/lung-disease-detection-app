@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import tensorflow as tf
+import numpy as np
 
 from app.configs.config import AppConfig
 from app.db.base import Base
@@ -47,8 +47,8 @@ def create_detector() -> LungDetection:
 
 def warmup(detector: LungDetection) -> None:
     # create a dummy input image (batch 1, 256x256, 3)
-    dummy = tf.zeros(
-        (1, AppConfig.IMAGE_SIZE[0], AppConfig.IMAGE_SIZE[1], 3), dtype=tf.float32
+    dummy = np.zeros(
+        (1, AppConfig.IMAGE_SIZE[0], AppConfig.IMAGE_SIZE[1], 3), dtype=np.float32
     )
     _ = detector.predict(dummy, return_all=False)
 

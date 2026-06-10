@@ -42,8 +42,8 @@ def run_inference(
         response["disease"] = results["disease"]
 
     source_img = _bytes_to_np(raw_bytes)
-    mask = results["mask"].numpy()
-    roi = results["roi_img"].numpy()
+    mask = results["mask"]
+    roi = results["roi_img"]
 
     response.update(
         save_output_images(

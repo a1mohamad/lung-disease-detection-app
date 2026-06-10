@@ -2,6 +2,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = os.environ.get("TF_CPP_MIN_LOG_LEVEL", "3")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
@@ -52,6 +53,14 @@ app = FastAPI(
 )
 
 register_exception_handlers(app)
+if AppConfig.CORS_ALLOW_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=AppConfig.CORS_ALLOW_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
 app.include_router(router)
 app.mount("/static", StaticFiles(directory=AppConfig.ASSETS_DIR), name="static")
 if AppConfig.FRONTEND_DIR.exists():
