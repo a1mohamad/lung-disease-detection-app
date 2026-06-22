@@ -2,7 +2,16 @@ from datetime import datetime
 
 from airflow import DAG
 from airflow.providers.standard.operators.empty import EmptyOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
+
+from mlops.airflow.tasks.prepare_data import prepare_retrain_dataset
+
+
+DATASET_CONF = {
+    "tfrecords_dir": "{{ ti.xcom_pull(task_ids='prepare_dataset')['snapshot_dir'] }}",
+    "dataset_mode": "{{ ti.xcom_pull(task_ids='prepare_dataset')['dataset_mode'] }}",
+}
 
 
 with DAG(
@@ -13,6 +22,10 @@ with DAG(
     tags=["mlflow", "orchestration"],
 ) as dag:
     start = EmptyOperator(task_id="start")
+    prepare_dataset = PythonOperator(
+        task_id="prepare_dataset",
+        python_callable=prepare_retrain_dataset,
+    )
 
     trigger_segmentation = TriggerDagRunOperator(
         task_id="trigger_segmentation",
@@ -23,6 +36,7 @@ with DAG(
         allowed_states=["success"],
         failed_states=["failed"],
         poke_interval=15,
+        conf=DATASET_CONF,
     )
 
     trigger_binary_densenet = TriggerDagRunOperator(
@@ -34,6 +48,7 @@ with DAG(
         allowed_states=["success"],
         failed_states=["failed"],
         poke_interval=15,
+        conf=DATASET_CONF,
     )
     trigger_binary_efficientnet = TriggerDagRunOperator(
         task_id="trigger_binary_efficientnet",
@@ -44,6 +59,7 @@ with DAG(
         allowed_states=["success"],
         failed_states=["failed"],
         poke_interval=15,
+        conf=DATASET_CONF,
     )
     trigger_binary_inception = TriggerDagRunOperator(
         task_id="trigger_binary_inception",
@@ -54,6 +70,7 @@ with DAG(
         allowed_states=["success"],
         failed_states=["failed"],
         poke_interval=15,
+        conf=DATASET_CONF,
     )
     trigger_binary_mobilenet = TriggerDagRunOperator(
         task_id="trigger_binary_mobilenet",
@@ -64,6 +81,7 @@ with DAG(
         allowed_states=["success"],
         failed_states=["failed"],
         poke_interval=15,
+        conf=DATASET_CONF,
     )
 
     binary_done = EmptyOperator(task_id="binary_done")
@@ -77,11 +95,12 @@ with DAG(
         allowed_states=["success"],
         failed_states=["failed"],
         poke_interval=15,
+        conf=DATASET_CONF,
     )
 
     end = EmptyOperator(task_id="end")
 
-    start >> trigger_segmentation
+    start >> prepare_dataset >> trigger_segmentation
     trigger_segmentation >> [
         trigger_binary_densenet,
         trigger_binary_efficientnet,
