@@ -4,10 +4,21 @@ import os
 from pathlib import Path
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
 class MLOpsSettings:
     ROOT = Path(os.getenv("PROJECT_ROOT", str(Path(__file__).resolve().parents[2])))
+    DEPLOYMENT_DIR = ROOT
+    if not (DEPLOYMENT_DIR / "saved_models").exists() and (
+        ROOT / "deployment" / "saved_models"
+    ).exists():
+        DEPLOYMENT_DIR = ROOT / "deployment"
+
     RESEARCH_DIR = ROOT / "research"
-    DEPLOYMENT_DIR = ROOT / "deployment"
+    if not RESEARCH_DIR.exists() and (ROOT.parent / "research").exists():
+        RESEARCH_DIR = ROOT.parent / "research"
 
     TFRECORDS_DIR = RESEARCH_DIR / "data" / "tfrecords"
     EXPERIMENT = "lung-detection"
@@ -18,3 +29,87 @@ class MLOpsSettings:
     VAL_RATIO = 0.2
     MAX_TRAIN_BATCHES = None
     MAX_EVAL_BATCHES = None
+
+    RETRAIN_DATASET_MODE = os.getenv("RETRAIN_DATASET_MODE", "legacy").strip().lower()
+    REVIEWED_DATA_BACKEND = os.getenv("REVIEWED_DATA_BACKEND", "local").strip().lower()
+    REVIEWED_DATA_LOCAL_ROOT = Path(
+        os.getenv(
+            "REVIEWED_DATA_LOCAL_ROOT",
+            str(DEPLOYMENT_DIR / "reviewed_data" / "incoming"),
+        )
+    )
+    REVIEWED_DATA_MANIFEST_INDEX = os.getenv(
+        "REVIEWED_DATA_MANIFEST_INDEX",
+        "index.json",
+    ).strip("/")
+    REVIEWED_DATA_INCLUDE_BASELINE = _env_bool(
+        "REVIEWED_DATA_INCLUDE_BASELINE",
+        True,
+    )
+    REVIEWED_DATA_BASELINE_CSV = Path(
+        os.getenv(
+            "REVIEWED_DATA_BASELINE_CSV",
+            str(RESEARCH_DIR / "data" / "all_image_mask_pairs.csv"),
+        )
+    )
+    REVIEWED_DATA_CLASS_MAPPING = Path(
+        os.getenv(
+            "REVIEWED_DATA_CLASS_MAPPING",
+            str(RESEARCH_DIR / "data" / "class_mapping.json"),
+        )
+    )
+
+    REVIEWED_DATA_SUPABASE_URL = os.getenv(
+        "REVIEWED_DATA_SUPABASE_URL",
+        os.getenv("SUPABASE_URL", ""),
+    ).rstrip("/")
+    REVIEWED_DATA_SUPABASE_SERVICE_ROLE_KEY = os.getenv(
+        "REVIEWED_DATA_SUPABASE_SERVICE_ROLE_KEY",
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
+    )
+    REVIEWED_DATA_SUPABASE_BUCKET = os.getenv(
+        "REVIEWED_DATA_SUPABASE_BUCKET",
+        "reviewed-training-data",
+    )
+    REVIEWED_DATA_SUPABASE_PREFIX = os.getenv(
+        "REVIEWED_DATA_SUPABASE_PREFIX",
+        "reviewed-data",
+    ).strip("/")
+
+    RETRAIN_SNAPSHOT_ROOT = Path(
+        os.getenv(
+            "RETRAIN_SNAPSHOT_ROOT",
+            str(DEPLOYMENT_DIR / "runtime" / "retrain_snapshots"),
+        )
+    )
+    RETRAIN_SPLIT_REGISTRY = Path(
+        os.getenv(
+            "RETRAIN_SPLIT_REGISTRY",
+            str(DEPLOYMENT_DIR / "runtime" / "reviewed_split_registry.json"),
+        )
+    )
+    RETRAIN_TFRECORD_SHARDS = max(
+        1,
+        int(os.getenv("RETRAIN_TFRECORD_SHARDS", "10")),
+    )
+    RETRAIN_SPLIT_SEED = os.getenv("RETRAIN_SPLIT_SEED", "lung-detection-v1")
+    RETRAIN_DRY_RUN = _env_bool("RETRAIN_DRY_RUN", True)
+    MODEL_RELEASE_ROOT = Path(
+        os.getenv(
+            "MODEL_RELEASE_ROOT",
+            str(DEPLOYMENT_DIR / "runtime" / "model_releases"),
+        )
+    )
+    ONNX_EXPORT_OPSET = int(os.getenv("ONNX_EXPORT_OPSET", "13"))
+    ONNX_VALIDATION_RTOL = float(os.getenv("ONNX_VALIDATION_RTOL", "0.001"))
+    ONNX_VALIDATION_ATOL = float(os.getenv("ONNX_VALIDATION_ATOL", "0.001"))
+
+    HF_PUBLISH_ENABLED = _env_bool("HF_PUBLISH_ENABLED", False)
+    HF_PUBLISH_REPO_ID = os.getenv(
+        "HF_PUBLISH_REPO_ID",
+        "a1mohamadd/lung-disease-detection",
+    )
+    HF_PUBLISH_REPO_TYPE = os.getenv("HF_PUBLISH_REPO_TYPE", "model")
+    HF_PUBLISH_REVISION = os.getenv("HF_PUBLISH_REVISION", "main")
+    HF_PUBLISH_CREATE_PR = _env_bool("HF_PUBLISH_CREATE_PR", False)
+    HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_HUB_TOKEN", "")
