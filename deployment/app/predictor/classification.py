@@ -108,11 +108,9 @@ class BinaryClassificationModel:
 class EnsembleBinaryClassifier:
     def __init__(
         self, 
-        models: Dict[str, BinaryClassificationModel], 
-        vote_threshold: int = 2
+        models: Dict[str, BinaryClassificationModel],
     ) -> None:
         self.models = models
-        self.vote_threshold = vote_threshold
 
         # use class_map from first model as shared map
         first_model = next(iter(models.values()))
@@ -138,11 +136,10 @@ class EnsembleBinaryClassifier:
                 "label_name": label_name
             }
 
-        all_labels = [v["label"] for v in per_model.values()]
         all_probs = [v["prob"] for v in per_model.values()]
 
-        final_label = int(sum(all_labels) > self.vote_threshold)
         final_prob = sum(all_probs) / len(all_probs)
+        final_label = int(final_prob >= 0.5)
 
         final_label_name = self.class_map.get(final_label)
 
