@@ -13,13 +13,14 @@ EPOCHS = MLOpsSettings.EPOCHS
 VAL_RATIO = MLOpsSettings.VAL_RATIO
 MAX_TRAIN_BATCHES = MLOpsSettings.MAX_TRAIN_BATCHES
 MAX_EVAL_BATCHES = MLOpsSettings.MAX_EVAL_BATCHES
+DATASET_MODE = MLOpsSettings.RETRAIN_DATASET_MODE
 from mlops.airflow.tasks.retrain import retrain_model
 
 
 with DAG(
     dag_id="retrain_binary_efficientnet",
     start_date=datetime(2026, 2, 1),
-    schedule="@monthly",
+    schedule=None,
     catchup=False,
     tags=["mlflow", "retrain", "binary"],
 ) as dag:
@@ -36,6 +37,7 @@ with DAG(
             "experiment": EXPERIMENT,
             "stage": MODEL_STAGE,
             "val_ratio": VAL_RATIO,
+            "dataset_mode": DATASET_MODE,
         },
     )
 
