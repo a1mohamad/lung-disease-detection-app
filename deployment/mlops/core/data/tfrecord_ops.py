@@ -21,6 +21,32 @@ def split_tfrecords(tfrecords: list[Path], val_ratio: float) -> tuple[list[Path]
     return train_files, val_files
 
 
+def resolve_tfrecord_splits(
+    tfrecords_dir: Path,
+    *,
+    dataset_mode: str,
+    val_ratio: float,
+) -> tuple[list[Path], list[Path], list[Path]]:
+    mode = dataset_mode.strip().lower()
+    if mode == "legacy":
+        train_files, val_files = split_tfrecords(
+            list_tfrecords(tfrecords_dir),
+            val_ratio,
+        )
+        return train_files, val_files, []
+    if mode != "prepared":
+        raise ValueError(f"Unsupported retraining dataset mode: {dataset_mode}")
+
+    train_files = list_tfrecords(tfrecords_dir / "train")
+    val_files = list_tfrecords(tfrecords_dir / "validation")
+    test_files = list_tfrecords(tfrecords_dir / "test")
+    if not train_files or not val_files or not test_files:
+        raise RuntimeError(
+            "Prepared TFRecord snapshot must contain train, validation, and test folders."
+        )
+    return train_files, val_files, test_files
+
+
 def count_examples_in_tfrecords(tfrecord_paths: list[Path]) -> int:
     total = 0
     for path in tfrecord_paths:
