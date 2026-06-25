@@ -15,12 +15,16 @@ def retrain_model(
     stage: str = "Production",
     val_ratio: float = 0.2,
     register_model: bool = True,
+    dataset_mode: str = "legacy",
+    **context,
 ) -> None:
     # Lazy import prevents heavy ML modules from loading at DAG parse time.
     from mlops.jobs.monthly_retrain import run_pipeline
 
+    dag_run = context.get("dag_run")
+    dag_conf = getattr(dag_run, "conf", {}) or {}
     run_pipeline(
-        tfrecords_dir=tfrecords_dir,
+        tfrecords_dir=dag_conf.get("tfrecords_dir", tfrecords_dir),
         batch_size=batch_size,
         epochs=epochs,
         max_train_batches=max_train_batches,
@@ -30,4 +34,5 @@ def retrain_model(
         model_name=model_name,
         val_ratio=val_ratio,
         register_model=register_model,
+        dataset_mode=dag_conf.get("dataset_mode", dataset_mode),
     )
