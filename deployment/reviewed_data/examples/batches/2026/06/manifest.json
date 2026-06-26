@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "batch_id": "reviewed-2026-06",
+  "period_start": "2026-06-01T00:00:00Z",
+  "period_end": "2026-07-01T00:00:00Z",
+  "records": [
+    {
+      "sample_id": "reviewed-2026-06-000001",
+      "patient_id": "patient-000001",
+      "image_key": "batches/2026/06/images/reviewed-2026-06-000001.png",
+      "mask_key": "batches/2026/06/masks/reviewed-2026-06-000001.png",
+      "class_name": "COVID",
+      "reviewed_at": "2026-06-12T09:30:00Z"
+    }
+  ]
+}
