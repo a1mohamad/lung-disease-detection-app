@@ -12,41 +12,61 @@ from mlops.core.evaluation.runner import evaluate_model_for_spec
 from mlops.core.models.compile import get_preprocess_fn
 
 
-def build_train_val_datasets_for_spec(spec, metadata: dict, train_files, val_files, batch_size: int):
+def build_dataset_for_spec(spec, metadata: dict, files, batch_size: int):
     image_size = tuple(metadata.get("inference", {}).get("input_size", [256, 256]))
     preprocess_config = metadata.get("preprocessing", {})
 
     if spec.task == "binary_classification":
         prep = preprocess_config.get("preprocess_input_fn", "")
         preprocess_fn = get_preprocess_fn(prep)
-        train_ds = build_binary_dataset(train_files, image_size, batch_size, preprocess_fn, preprocess_config)
-        val_ds = build_binary_dataset(val_files, image_size, batch_size, preprocess_fn, preprocess_config)
-        return train_ds, val_ds
+        return build_binary_dataset(
+            files,
+            image_size,
+            batch_size,
+            preprocess_fn,
+            preprocess_config,
+        )
 
     if spec.task == "multiclass_classification":
         prep = preprocess_config.get("preprocess_input_fn", "")
         preprocess_fn = get_preprocess_fn(prep)
         num_classes = len(metadata.get("output", {}).get("classes", {}))
-        train_ds = build_multiclass_dataset(
-            train_files,
+        return build_multiclass_dataset(
+            files,
             image_size,
             batch_size,
             preprocess_fn,
             num_classes,
             preprocess_config,
         )
-        val_ds = build_multiclass_dataset(
-            val_files,
-            image_size,
-            batch_size,
-            preprocess_fn,
-            num_classes,
-            preprocess_config,
-        )
-        return train_ds, val_ds
 
-    train_ds = build_segmentation_dataset(train_files, image_size, batch_size, preprocess_config)
-    val_ds = build_segmentation_dataset(val_files, image_size, batch_size, preprocess_config)
+    return build_segmentation_dataset(
+        files,
+        image_size,
+        batch_size,
+        preprocess_config,
+    )
+
+
+def build_train_val_datasets_for_spec(
+    spec,
+    metadata: dict,
+    train_files,
+    val_files,
+    batch_size: int,
+):
+    train_ds = build_dataset_for_spec(
+        spec,
+        metadata,
+        train_files,
+        batch_size,
+    )
+    val_ds = build_dataset_for_spec(
+        spec,
+        metadata,
+        val_files,
+        batch_size,
+    )
     return train_ds, val_ds
 
 
