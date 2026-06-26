@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/lung-detection/reviewed-manifest.schema.json",
+  "title": "Reviewed Lung Training Batch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "batch_id",
+    "period_start",
+    "period_end",
+    "records"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "batch_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sample_id",
+          "patient_id",
+          "image_key",
+          "mask_key",
+          "class_name",
+          "reviewed_at"
+        ],
+        "properties": {
+          "sample_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "patient_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "image_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mask_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "class_name": {
+            "enum": [
+              "COVID",
+              "Normal",
+              "Viral Pneumonia",
+              "Lung_Opacity"
+            ]
+          },
+          "reviewed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "image_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "mask_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
