@@ -105,6 +105,24 @@ services:
       PYTHONPATH: "/opt/project"
       TF_CPP_MIN_LOG_LEVEL: "${TF_CPP_MIN_LOG_LEVEL:-3}"
       TF_ENABLE_ONEDNN_OPTS: "${TF_ENABLE_ONEDNN_OPTS:-0}"
+      RETRAIN_DATASET_MODE: "${RETRAIN_DATASET_MODE:-legacy}"
+      RETRAIN_DRY_RUN: "${RETRAIN_DRY_RUN:-true}"
+      REVIEWED_DATA_BACKEND: "${REVIEWED_DATA_BACKEND:-local}"
+      REVIEWED_DATA_LOCAL_ROOT: "${REVIEWED_DATA_LOCAL_ROOT:-/opt/project/reviewed_data/incoming}"
+      REVIEWED_DATA_MANIFEST_INDEX: "${REVIEWED_DATA_MANIFEST_INDEX:-index.json}"
+      REVIEWED_DATA_INCLUDE_BASELINE: "${REVIEWED_DATA_INCLUDE_BASELINE:-true}"
+      REVIEWED_DATA_SUPABASE_URL: "${REVIEWED_DATA_SUPABASE_URL:-}"
+      REVIEWED_DATA_SUPABASE_SERVICE_ROLE_KEY: "${REVIEWED_DATA_SUPABASE_SERVICE_ROLE_KEY:-}"
+      REVIEWED_DATA_SUPABASE_BUCKET: "${REVIEWED_DATA_SUPABASE_BUCKET:-reviewed-training-data}"
+      REVIEWED_DATA_SUPABASE_PREFIX: "${REVIEWED_DATA_SUPABASE_PREFIX:-reviewed-data}"
+      RETRAIN_TFRECORD_SHARDS: "${RETRAIN_TFRECORD_SHARDS:-10}"
+      RETRAIN_SPLIT_SEED: "${RETRAIN_SPLIT_SEED:-lung-detection-v1}"
+      HF_PUBLISH_ENABLED: "${HF_PUBLISH_ENABLED:-false}"
+      HF_PUBLISH_REPO_ID: "${HF_PUBLISH_REPO_ID:-a1mohamadd/lung-disease-detection}"
+      HF_PUBLISH_REPO_TYPE: "${HF_PUBLISH_REPO_TYPE:-model}"
+      HF_PUBLISH_REVISION: "${HF_PUBLISH_REVISION:-main}"
+      HF_PUBLISH_CREATE_PR: "${HF_PUBLISH_CREATE_PR:-false}"
+      HF_TOKEN: "${HF_TOKEN:-}"
     volumes:
       - ./mlops/airflow/dags:/opt/airflow/dags
       - ./:/opt/project
@@ -239,5 +257,3 @@ services:
 volumes:
   mssql_data:
   airflow_pg_data:
-
-
