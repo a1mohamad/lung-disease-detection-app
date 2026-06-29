@@ -1,16 +1,22 @@
 from __future__ import annotations
 
+import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
 
-import tensorflow as tf
-
 from mlops.core.publishing.release import _convert_saved_model, _validate_onnx
 
 
+@unittest.skipUnless(
+    importlib.util.find_spec("tensorflow")
+    and importlib.util.find_spec("onnxruntime")
+    and importlib.util.find_spec("tf2onnx"),
+    "requires TensorFlow, ONNX Runtime, and tf2onnx",
+)
 class OnnxReleaseSmokeTests(unittest.TestCase):
     def test_saved_model_conversion_matches_tensorflow(self):
+        import tensorflow as tf
         import onnxruntime as ort
 
         inputs = tf.keras.Input(shape=(4,), name="features")
