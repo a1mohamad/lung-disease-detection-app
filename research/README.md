@@ -1,10 +1,10 @@
 # Research
 
-![TensorFlow](https://img.shields.io/badge/TensorFlow-Training-FF6F00?logo=tensorflow&logoColor=white)
-![Keras](https://img.shields.io/badge/Keras-Model%20Experiments-D00000?logo=keras&logoColor=white)
-![Optuna](https://img.shields.io/badge/Optuna-Hyperparameter%20Search-3155A4)
-![TFRecord](https://img.shields.io/badge/TFRecord-Data%20Pipeline-orange)
-![Status](https://img.shields.io/badge/Role-Research%20Artifacts-lightgrey)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-Training-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
+[![Keras](https://img.shields.io/badge/Keras-Model%20Experiments-D00000?logo=keras&logoColor=white)](https://keras.io/)
+[![Optuna](https://img.shields.io/badge/Optuna-Hyperparameter%20Search-3155A4)](https://optuna.org/)
+[![TFRecord](https://img.shields.io/badge/TFRecord-Data%20Pipeline-orange)](https://www.tensorflow.org/tutorials/load_data/tfrecord)
+[![Status](https://img.shields.io/badge/Role-Research%20Artifacts-lightgrey)](#purpose)
 
 Research notebooks, dataset preparation utilities, TFRecord generation workflows, and training experiments for the lung disease detection platform.
 
