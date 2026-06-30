@@ -4,15 +4,15 @@
 
 ### End-to-end chest X-ray analysis platform with FastAPI, ONNX inference, Kafka, MLflow, Airflow, and Hugging Face deployment
 
-![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-Inference%20API-009688?logo=fastapi&logoColor=white)
-![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-Production%20Inference-005CED?logo=onnx&logoColor=white)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-Training%20%7C%20Keras-FF6F00?logo=tensorflow&logoColor=white)
-![Kafka](https://img.shields.io/badge/Kafka-Event%20Pipeline-231F20?logo=apachekafka&logoColor=white)
-![MLflow](https://img.shields.io/badge/MLflow-Model%20Tracking-0194E2)
-![Airflow](https://img.shields.io/badge/Airflow-MLOps%20Orchestration-017CEE?logo=apacheairflow&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Inference%20API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-Production%20Inference-005CED?logo=onnx&logoColor=white)](https://onnxruntime.ai/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-Training%20%7C%20Keras-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
+[![Kafka](https://img.shields.io/badge/Kafka-Event%20Pipeline-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![MLflow](https://img.shields.io/badge/MLflow-Model%20Tracking-0194E2)](https://mlflow.org/)
+[![Airflow](https://img.shields.io/badge/Airflow-MLOps%20Orchestration-017CEE?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 </div>
 
@@ -32,6 +32,7 @@
 - [Runtime Configuration](#runtime-configuration)
 - [Local Development](#local-development)
 - [Docker Deployment](#docker-deployment)
+- [Makefile Shortcuts](#makefile-shortcuts)
 - [MLOps Lifecycle](#mlops-lifecycle)
 - [Kafka Event Pipeline](#kafka-event-pipeline)
 - [Testing and CI/CD](#testing-and-cicd)
@@ -424,6 +425,8 @@ http://localhost:8000/ui
 
 ## Docker Deployment
 
+The deployment folder includes a `Makefile` that wraps the longer Docker Compose commands. Use the explicit Compose commands below when you want to see every flag, or use the Makefile targets in the next section for day-to-day operation.
+
 ### Slim ONNX Runtime
 
 This is the production-oriented topology for API serving:
@@ -454,6 +457,42 @@ Includes:
 - Airflow
 - retraining jobs
 - model registry workflow
+
+---
+
+## Makefile Shortcuts
+
+From `deployment/`, the Makefile provides shorter commands for the main Docker workflows:
+
+| Target | Purpose |
+|---|---|
+| `make runtime-build` | Build the slim ONNX runtime Compose image |
+| `make runtime-up` | Start the runtime stack with `.env.runtime` |
+| `make runtime-down` | Stop the runtime stack |
+| `make runtime-logs` | Follow runtime logs |
+| `make runtime-ps` | Show runtime containers |
+| `make mlops-build` | Build the full MLOps stack |
+| `make mlops-up` | Start DB, MLflow, and Airflow services |
+| `make mlops-down` | Stop the MLOps stack |
+| `make mlops-logs` | Follow MLOps logs |
+| `make backfill` | Run post-hoc MLflow backfill |
+| `make backfill-eval` | Run post-hoc backfill with evaluation |
+
+Example:
+
+```powershell
+cd deployment
+make runtime-build
+make runtime-up
+make runtime-logs
+```
+
+The Makefile defaults to `.env.runtime` for runtime targets and `.env.compose` for MLOps targets. You can override files when needed:
+
+```powershell
+make runtime-up RUNTIME_ENV_FILE=.env.runtime
+make mlops-up ENV_FILE=.env.compose
+```
 
 ---
 
