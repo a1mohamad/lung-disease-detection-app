@@ -1,3 +1,5 @@
+"""Retraining dataset construction and task-specific fit/evaluate loop."""
+
 from __future__ import annotations
 
 import tensorflow as tf
@@ -13,9 +15,22 @@ from mlops.core.models.compile import get_preprocess_fn
 
 
 def build_dataset_for_spec(spec, metadata: dict, files, batch_size: int):
+    """Build a train, validation, or test dataset for a model spec.
+
+    Args:
+        spec: Managed model specification.
+        metadata: Parsed model metadata.
+        files: TFRecord files for the requested split.
+        batch_size: Dataset batch size.
+
+    Returns:
+        TensorFlow dataset shaped for the model task.
+    """
     image_size = tuple(metadata.get("inference", {}).get("input_size", [256, 256]))
     preprocess_config = metadata.get("preprocessing", {})
 
+    # Match the dataset target format to the model task so retraining and
+    # evaluation use the same contracts.
     if spec.task == "binary_classification":
         prep = preprocess_config.get("preprocess_input_fn", "")
         preprocess_fn = get_preprocess_fn(prep)
@@ -55,6 +70,18 @@ def build_train_val_datasets_for_spec(
     val_files,
     batch_size: int,
 ):
+    """Create paired train and validation datasets for one model spec.
+
+    Args:
+        spec: Managed model specification.
+        metadata: Parsed model metadata.
+        train_files: Training TFRecord files.
+        val_files: Validation TFRecord files.
+        batch_size: Dataset batch size.
+
+    Returns:
+        Tuple of ``(train_dataset, validation_dataset)``.
+    """
     train_ds = build_dataset_for_spec(
         spec,
         metadata,
@@ -82,6 +109,25 @@ def retrain_and_evaluate_for_spec(
     max_train_batches: int | None,
     max_eval_batches: int | None,
 ):
+    """Fine-tune a model, then evaluate it on the validation dataset.
+
+    Args:
+        spec: Managed model specification.
+        metadata: Parsed model metadata.
+        model: Compiled Keras model to retrain.
+        train_files: Training TFRecord files.
+        val_files: Validation TFRecord files.
+        batch_size: Training/evaluation batch size.
+        epochs: Maximum training epochs.
+        max_train_batches: Optional cap for smoke tests.
+        max_eval_batches: Optional cap for validation smoke tests.
+
+    Returns:
+        Tuple of ``(trained_model, validation_metrics)``.
+
+    Raises:
+        RuntimeError: If training or validation resolves to zero steps.
+    """
     train_steps = compute_steps_from_tfrecords(list(train_files), batch_size)
     val_steps = compute_steps_from_tfrecords(list(val_files), batch_size)
 
@@ -101,6 +147,8 @@ def retrain_and_evaluate_for_spec(
     if val_steps <= 0:
         raise RuntimeError("Validation steps resolved to zero. Check TFRecord files and batch size.")
 
+    # Early stopping keeps monthly retraining from overfitting small reviewed
+    # snapshots while restoring the best validation-loss weights.
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
             monitor="val_loss",
