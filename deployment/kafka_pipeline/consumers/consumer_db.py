@@ -1,3 +1,5 @@
+"""Kafka consumer that persists prediction events to the database."""
+
 from __future__ import annotations
 import warnings
 from sqlalchemy.exc import SAWarning
@@ -27,6 +29,12 @@ from kafka_pipeline.consumers.common import build_consumer, poll_event
 
 
 def main() -> None:
+    """Consume prediction events and write normalized database records.
+
+    This consumer owns database persistence when Kafka is enabled. Keeping DB
+    writes here prevents the API route from blocking on relational persistence
+    and avoids double-writing the same request.
+    """
     if not AppConfig.KAFKA_ENABLED:
         print("KAFKA_ENABLED=false, db consumer stopped.")
         return
@@ -39,6 +47,9 @@ def main() -> None:
             if not event:
                 continue
 
+            # Create one short-lived session per event. That keeps failed events
+            # isolated and prevents a long-running consumer from holding stale
+            # transaction state.
             db = SessionLocal()
             try:
                 log_prediction(
