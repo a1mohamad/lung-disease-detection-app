@@ -12,6 +12,12 @@
 [![MLflow](https://img.shields.io/badge/MLflow-Model%20Tracking-0194E2)](https://mlflow.org/)
 [![Airflow](https://img.shields.io/badge/Airflow-MLOps%20Orchestration-017CEE?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Frontend-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/apps/lung-disease-detection/)
+[![Hugging Face Space](https://img.shields.io/badge/Hugging%20Face-Live%20API%20Space-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api)
+[![HF Model Hub](https://img.shields.io/badge/Hugging%20Face-Model%20Artifacts-FF9D00?logo=huggingface&logoColor=black)](https://huggingface.co/a1mohamadd/lung-disease-detection)
+[![Render PostgreSQL](https://img.shields.io/badge/Render-Managed%20PostgreSQL-46E3B7?logo=render&logoColor=black)](https://render.com/docs/databases)
+[![Supabase Storage](https://img.shields.io/badge/Supabase-Object%20Storage-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/storage)
+[![Kaggle Dataset](https://img.shields.io/badge/Kaggle-COVID--19%20Radiography-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/datasets/tawsifurrahman/covid19-radiography-database)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 </div>
@@ -21,6 +27,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Live System](#live-system)
 - [Why This Project Matters](#why-this-project-matters)
 - [System Capabilities](#system-capabilities)
 - [Model Pipeline](#model-pipeline)
@@ -60,6 +67,38 @@ The deployable runtime is optimized around **ONNX Runtime** for lean inference, 
 
 ---
 
+## Live System
+
+The public deployment is split across purpose-built services instead of one monolithic host:
+
+| Layer | Live Destination | Role |
+|---|---|---|
+| Frontend app | [GitHub Pages app](https://a1mohamad.github.io/apps/lung-disease-detection/app) | Browser UI for image upload and prediction review |
+| Frontend landing route | [GitHub Pages project page](https://a1mohamad.github.io/apps/lung-disease-detection/) | Public entry point for the web app |
+| Inference API | [Hugging Face Space](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api) | Containerized FastAPI runtime with ONNX inference |
+| Model artifacts | [Hugging Face model repository](https://huggingface.co/a1mohamadd/lung-disease-detection) | Remote model source used by `HF_MODEL_DOWNLOAD_ENABLED=true` |
+| Prediction database | [Render PostgreSQL](https://render.com/docs/databases) | Managed Postgres backing normalized prediction logs |
+| Image artifacts | [Supabase Storage](https://supabase.com/storage) | Durable source, mask, ROI, and overlay image storage |
+| Research lab | [Research website page](https://a1mohamad.github.io/research/lung-disease-detection/index.html) | Portfolio research notes and experiment presentation |
+| Dataset | [COVID-19 Radiography Database on Kaggle](https://www.kaggle.com/datasets/tawsifurrahman/covid19-radiography-database) | Source chest X-ray dataset used by the research workflow |
+
+Production-style request flow:
+
+```text
+GitHub Pages frontend
+    |
+    v
+Hugging Face Space FastAPI runtime
+    |
+    |-- downloads/loads model artifacts from Hugging Face Hub
+    |-- writes prediction logs to Render PostgreSQL
+    +-- uploads generated images to Supabase Storage
+```
+
+This deployment layout keeps the browser UI static and inexpensive, the inference API containerized, model artifacts versioned outside the image, logs in managed SQL storage, and generated medical-review images in object storage.
+
+---
+
 ## Why This Project Matters
 
 This repository demonstrates the full arc of an applied AI system:
@@ -91,13 +130,13 @@ For a resume flagship, the important point is the **engineering completeness**: 
 ### API and Frontend
 
 - FastAPI application with typed Pydantic request and response schemas.
-- Static React frontend bundle mounted under `/ui`.
+- Public frontend served through GitHub Pages, with a deployable static bundle also supported under `/ui`.
 - Health endpoint for CI/CD and cloud runtime checks.
 - Protected prediction log endpoint.
 
 ### Eventing and Persistence
 
-- Direct database logging when Kafka is disabled.
+- Direct database logging to managed Postgres when Kafka is disabled.
 - Kafka event publishing when Kafka is enabled.
 - Independent consumers for database persistence, analytics, monitoring, doctor-review queues, and notifications.
 - SQL Server and Postgres support through SQLAlchemy.
@@ -109,7 +148,7 @@ For a resume flagship, the important point is the **engineering completeness**: 
 - Reviewed-data ingestion with manifest validation.
 - Stable patient-level train/validation/test splits.
 - ONNX export and numerical validation.
-- Optional Hugging Face Hub publication for promoted model releases.
+- Hugging Face Hub model artifact publication and runtime download support.
 
 ---
 
@@ -171,8 +210,8 @@ This makes runtime behavior auditable and avoids hard-coding model-specific deta
 
 ```text
                             +-----------------------+
-                            |  Static React UI      |
-                            |  /ui                  |
+                            |  GitHub Pages UI      |
+                            |  public frontend      |
                             +-----------+-----------+
                                         |
                                         v
@@ -196,7 +235,7 @@ This makes runtime behavior auditable and avoids hard-coding model-specific deta
                       |                                   |
                       v                                   v
           +-----------+-----------+          +------------+------------+
-          | Local or Supabase     |          | DB logging or Kafka     |
+          | Supabase or local     |          | Render Postgres or Kafka|
           | artifact storage      |          | event publication       |
           +-----------------------+          +------------+------------+
                                                            |
@@ -384,7 +423,9 @@ The logs endpoint is disabled unless `LOGS_API_KEY` is configured.
 | `KAFKA_BOOTSTRAP_SERVERS` | `127.0.0.1:9092` | Kafka broker list |
 | `MLFLOW_ENABLED` | `false` | Enables MLflow model registry loading for Keras runtime |
 | `HF_MODEL_DOWNLOAD_ENABLED` | `false` | Downloads missing model artifacts from Hugging Face |
+| `HF_MODEL_REPO_ID` | `a1mohamadd/lung-disease-detection` | Hugging Face model artifact repository |
 | `PREDICTION_STORAGE_BACKEND` | `local` | `local` or `supabase` artifact storage |
+| `SUPABASE_STORAGE_BUCKET` | `lung-detection-predictions` | Bucket for generated prediction artifacts |
 | `LOGS_API_KEY` | empty | Enables and protects `/logs` |
 
 Runtime templates are provided in `deployment/.env*.template`.
@@ -585,6 +626,13 @@ GitHub Actions performs:
 4. Hugging Face Space deployment
 5. deployed `/health` verification
 
+The deployed Space is designed to read secrets and managed-service URLs from its environment:
+
+- `DATABASE_URL` points to Render PostgreSQL.
+- `HF_MODEL_DOWNLOAD_ENABLED=true` downloads model artifacts from Hugging Face Hub.
+- `PREDICTION_STORAGE_BACKEND=supabase` uploads generated images to Supabase Storage.
+- `CORS_ALLOW_ORIGINS` allows the GitHub Pages frontend origin.
+
 ---
 
 ## Data and Model Artifacts
@@ -596,6 +644,8 @@ The research dataset is organized around:
 - Viral Pneumonia
 - Lung Opacity
 - lung masks
+
+Dataset source: [COVID-19 Radiography Database on Kaggle](https://www.kaggle.com/datasets/tawsifurrahman/covid19-radiography-database).
 
 Deployment label contracts:
 
@@ -624,6 +674,8 @@ deployment/saved_models/
 ```
 
 Each model directory contains `metadata.yaml`, Keras artifacts, and ONNX artifacts.
+
+In the live deployment, the Hugging Face Space can fetch these artifacts from the configured Hugging Face model repository instead of baking all models into the runtime image.
 
 ---
 
@@ -659,13 +711,17 @@ This project demonstrates:
 - ONNX export validation
 - Dockerized deployment
 - CI/CD to Hugging Face Spaces
+- GitHub Pages frontend integration
+- Render PostgreSQL persistence
+- Supabase object storage for prediction artifacts
+- Hugging Face Hub model delivery
 
 ---
 
 ## Current Limitations
 
 - The frontend source is not included; only the built static bundle is tracked.
-- Model artifacts are large and may need external hosting for clean public distribution.
+- Model artifacts are served from Hugging Face Hub for the live runtime.
 - The project is CPU-oriented in runtime Docker configuration.
 - Clinical robustness has not been externally validated.
 - DICOM input is explicitly rejected by the current image loader.
