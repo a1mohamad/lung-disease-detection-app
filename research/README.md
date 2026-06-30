@@ -5,6 +5,9 @@
 [![Optuna](https://img.shields.io/badge/Optuna-Hyperparameter%20Search-3155A4)](https://optuna.org/)
 [![TFRecord](https://img.shields.io/badge/TFRecord-Data%20Pipeline-orange)](https://www.tensorflow.org/tutorials/load_data/tfrecord)
 [![Status](https://img.shields.io/badge/Role-Research%20Artifacts-lightgrey)](#purpose)
+
+**Published Research and Data**
+
 [![Kaggle Dataset](https://img.shields.io/badge/Kaggle-COVID--19%20Radiography-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/datasets/tawsifurrahman/covid19-radiography-database)
 [![Research Lab](https://img.shields.io/badge/Research%20Lab-Project%20Page-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/research/lung-disease-detection/index.html)
 
