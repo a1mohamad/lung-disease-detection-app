@@ -1,4 +1,5 @@
 services:
+  # SQL Server stores prediction logs for the local application stack.
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
@@ -9,6 +10,8 @@ services:
     volumes:
       - mssql_data:/var/opt/mssql
 
+  # Initializes both application and MLflow databases before dependent services
+  # start using them. The loop allows SQL Server time to become ready.
   db-init:
     image: mcr.microsoft.com/mssql-tools
     depends_on:
@@ -18,6 +21,8 @@ services:
     entrypoint: >
       /bin/bash -c "until /opt/mssql-tools/bin/sqlcmd -S db -U sa -P ${MSSQL_SA_PASSWORD} -i /db/init/create_databases.sql; do sleep 5; done"
 
+  # FastAPI inference service. Model and artifact directories are mounted so the
+  # container can use local saved models and expose generated prediction images.
   app:
     build: .
     depends_on:
@@ -48,6 +53,8 @@ services:
       - ./runtime:/app/runtime
       - ./mlops/mlflow/artifacts:/mlflow/artifacts
 
+  # Persistence consumer. It owns database writes when Kafka is enabled so the
+  # API route can return predictions without blocking on relational logging.
   consumer_db:
     build: .
     depends_on:
@@ -70,6 +77,7 @@ services:
     volumes:
       - ./runtime:/app/runtime
 
+  # Monitoring consumer writes rolling-window metrics to runtime JSONL.
   consumer_monitoring:
     build: .
     environment:
@@ -81,6 +89,7 @@ services:
     volumes:
       - ./runtime:/app/runtime
 
+  # Analytics consumer stores compact model-behavior records for dashboards.
   consumer_analytics:
     build: .
     environment:
@@ -92,6 +101,7 @@ services:
     volumes:
       - ./runtime:/app/runtime
 
+  # Doctor-review consumer writes artifact links for human inspection queues.
   consumer_doctor:
     build: .
     environment:
@@ -103,6 +113,7 @@ services:
     volumes:
       - ./runtime:/app/runtime
 
+  # Notification consumer writes user-facing message drafts to a JSONL outbox.
   consumer_notifications:
     build: .
     environment:
@@ -115,4 +126,5 @@ services:
       - ./runtime:/app/runtime
 
 volumes:
+  # Named volume keeps SQL Server data across container restarts.
   mssql_data:
