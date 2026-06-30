@@ -1,3 +1,5 @@
+"""Database persistence helpers for prediction logs."""
+
 import json
 from typing import Any
 
@@ -21,6 +23,24 @@ def log_prediction(
     error_code: str | None = None,
     error_message: str | None = None,
 ) -> PredictionRequest:
+    """Persist a prediction response and all related child records.
+
+    The prediction log is normalized across a parent request row plus optional
+    image-link, per-model binary, and disease subtype rows. This keeps logs easy
+    to query while preserving the full response contract returned by the API.
+
+    Args:
+        db: Active SQLAlchemy session.
+        request_id: API request UUID or Kafka event key.
+        input_type: Source category such as ``path``, ``url``, ``base64``, or
+            ``upload``.
+        response: Prediction response emitted by the inference service.
+        error_code: Optional structured error code for failed events.
+        error_message: Optional human-readable error message for failed events.
+
+    Returns:
+        Persisted parent ``PredictionRequest`` record.
+    """
     disease = response.get("disease")
     final_probs = response.get("final_probs_by_label")
     record = PredictionRequest(
@@ -35,8 +55,12 @@ def log_prediction(
     )
 
     db.add(record)
+    # Flush assigns the parent primary key before child rows are constructed,
+    # while keeping the full normalized insert inside one transaction.
     db.flush()
 
+    # Artifact links are separated from the request row because URLs and
+    # storage paths evolve independently from model outputs.
     image_links = PredictionImageLink(
         prediction_request_id=record.id,
         source_url=response.get("source_url"),
@@ -52,6 +76,8 @@ def log_prediction(
 
     models_results = response.get("models_results")
     if isinstance(models_results, dict):
+        # Each ensemble member is persisted as its own row so monitoring can
+        # inspect disagreement and calibration trends per binary classifier.
         for model_name, model_data in models_results.items():
             if not isinstance(model_data, dict):
                 continue
@@ -68,6 +94,8 @@ def log_prediction(
             )
 
     if isinstance(disease, dict):
+        # Disease output is optional and only exists for unhealthy predictions,
+        # so it remains a nullable one-to-one child of the parent request.
         probs = disease.get("probs_by_label")
         db.add(
             PredictionDiseaseResult(
@@ -79,11 +107,26 @@ def log_prediction(
         )
 
     db.commit()
+    # Refresh returns DB-populated fields such as autoincrement ids and
+    # timestamps to callers that immediately serialize the record.
     db.refresh(record)
     return record
 
 
 def get_prediction_logs(*, db: Session, limit: int = 50, offset: int = 0) -> list[PredictionRequest]:
+    """Load prediction logs with related model, disease, and image records.
+
+    Args:
+        db: Active SQLAlchemy session.
+        limit: Maximum number of parent prediction records to return.
+        offset: Number of most-recent records to skip.
+
+    Returns:
+        List of prediction records ordered newest first, with child records
+        eager-loaded for response serialization.
+    """
+    # Eager loading avoids N+1 queries when the logs endpoint serializes nested
+    # image links, ensemble outputs, and disease subtype records.
     stmt = (
         select(PredictionRequest)
         .options(selectinload(PredictionRequest.image_links))
