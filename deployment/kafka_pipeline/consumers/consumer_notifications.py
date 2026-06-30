@@ -1,3 +1,5 @@
+"""Kafka consumer that builds user-facing notification messages."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,6 +11,15 @@ OUT = Path("runtime/notifications_outbox.jsonl")
 
 
 def _final_selected_prob(payload: dict) -> float | None:
+    """Return the probability associated with the final label name.
+
+    Args:
+        payload: Prediction response payload from the Kafka event.
+
+    Returns:
+        Probability for the selected label, or ``None`` if the payload lacks a
+        usable probability map.
+    """
     probs = payload.get("final_probs_by_label")
     if not isinstance(probs, dict):
         return None
@@ -19,6 +30,12 @@ def _final_selected_prob(payload: dict) -> float | None:
 
 
 def main() -> None:
+    """Consume prediction events and append notification outbox messages.
+
+    The current implementation writes a local JSONL outbox. A production system
+    could replace this with email, SMS, Slack, or dashboard notifications while
+    keeping the event contract unchanged.
+    """
     if not AppConfig.KAFKA_ENABLED:
         print("KAFKA_ENABLED=false, notifications consumer stopped.")
         return
@@ -39,6 +56,8 @@ def main() -> None:
             if disease and disease.get("label_name"):
                 disease_txt = f" Disease likely: {disease.get('label_name')}."
 
+            # Keep notification text concise and human-readable; detailed model
+            # probabilities remain available through logs and artifacts.
             msg = (
                 f"Prediction result: {final_label_name}. "
                 f"Confidence: {selected_prob:.2%}." if selected_prob is not None else f"Prediction result: {final_label_name}."
