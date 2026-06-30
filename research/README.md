@@ -5,6 +5,8 @@
 [![Optuna](https://img.shields.io/badge/Optuna-Hyperparameter%20Search-3155A4)](https://optuna.org/)
 [![TFRecord](https://img.shields.io/badge/TFRecord-Data%20Pipeline-orange)](https://www.tensorflow.org/tutorials/load_data/tfrecord)
 [![Status](https://img.shields.io/badge/Role-Research%20Artifacts-lightgrey)](#purpose)
+[![Kaggle Dataset](https://img.shields.io/badge/Kaggle-COVID--19%20Radiography-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/datasets/tawsifurrahman/covid19-radiography-database)
+[![Research Lab](https://img.shields.io/badge/Research%20Lab-Project%20Page-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/research/lung-disease-detection/index.html)
 
 Research notebooks, dataset preparation utilities, TFRecord generation workflows, and training experiments for the lung disease detection platform.
 
@@ -35,9 +37,13 @@ The research layer answers:
 - how Optuna searches informed DenseNet configurations
 - how class mappings evolved into deployment contracts
 
+Public research presentation: [lung disease detection research lab](https://a1mohamad.github.io/research/lung-disease-detection/index.html).
+
 ---
 
 ## Dataset Classes
+
+Dataset source: [COVID-19 Radiography Database on Kaggle](https://www.kaggle.com/datasets/tawsifurrahman/covid19-radiography-database).
 
 The source dataset uses four classes:
 
