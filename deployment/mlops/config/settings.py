@@ -1,3 +1,5 @@
+"""Environment-driven settings for MLOps jobs and Airflow tasks."""
+
 from __future__ import annotations
 
 import os
@@ -5,10 +7,29 @@ from pathlib import Path
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
+    """Parse a boolean environment variable using common truthy strings.
+
+    Args:
+        name: Environment variable name.
+        default: Boolean used when the variable is absent.
+
+    Returns:
+        Parsed boolean value.
+    """
     return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
 
 
 class MLOpsSettings:
+    """Centralized configuration for data, tracking, release, and publishing jobs.
+
+    The MLOps layer uses this class instead of the API ``AppConfig`` because
+    training jobs need additional paths and safety switches: reviewed-data
+    ingestion, split registries, snapshot output, ONNX release validation, and
+    optional Hugging Face publication.
+    """
+
+    # Resolve both "running from deployment/" and "running from repository root"
+    # layouts so Airflow, local scripts, and CI can share the same code.
     ROOT = Path(os.getenv("PROJECT_ROOT", str(Path(__file__).resolve().parents[2])))
     DEPLOYMENT_DIR = ROOT
     if not (DEPLOYMENT_DIR / "saved_models").exists() and (
@@ -20,6 +41,8 @@ class MLOpsSettings:
     if not RESEARCH_DIR.exists() and (ROOT.parent / "research").exists():
         RESEARCH_DIR = ROOT.parent / "research"
 
+    # Legacy research TFRecords are still supported, but prepared reviewed-data
+    # snapshots are the safer path for production retraining.
     TFRECORDS_DIR = RESEARCH_DIR / "data" / "tfrecords"
     EXPERIMENT = "lung-detection"
     MODEL_STAGE = "Production"
@@ -30,6 +53,8 @@ class MLOpsSettings:
     MAX_TRAIN_BATCHES = None
     MAX_EVAL_BATCHES = None
 
+    # Reviewed-data settings define where new human-reviewed examples are read
+    # from before they are converted into immutable TFRecord snapshots.
     RETRAIN_DATASET_MODE = os.getenv("RETRAIN_DATASET_MODE", "legacy").strip().lower()
     REVIEWED_DATA_BACKEND = os.getenv("REVIEWED_DATA_BACKEND", "local").strip().lower()
     REVIEWED_DATA_LOCAL_ROOT = Path(
@@ -76,6 +101,8 @@ class MLOpsSettings:
         "reviewed-data",
     ).strip("/")
 
+    # Snapshot and split-registry paths are runtime state, not source artifacts.
+    # They are deliberately kept under deployment/runtime by default.
     RETRAIN_SNAPSHOT_ROOT = Path(
         os.getenv(
             "RETRAIN_SNAPSHOT_ROOT",
@@ -104,6 +131,8 @@ class MLOpsSettings:
     ONNX_VALIDATION_RTOL = float(os.getenv("ONNX_VALIDATION_RTOL", "0.001"))
     ONNX_VALIDATION_ATOL = float(os.getenv("ONNX_VALIDATION_ATOL", "0.001"))
 
+    # Publishing is disabled by default so dry runs can evaluate and stage
+    # models without mutating the public Hugging Face artifact repository.
     HF_PUBLISH_ENABLED = _env_bool("HF_PUBLISH_ENABLED", False)
     HF_PUBLISH_REPO_ID = os.getenv(
         "HF_PUBLISH_REPO_ID",
