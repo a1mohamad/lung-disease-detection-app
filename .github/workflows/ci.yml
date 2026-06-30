@@ -1,16 +1,24 @@
 name: CI/CD
 
 on:
+  # Pull requests must pass the lightweight Python suite before merge.
   pull_request:
     branches: [main]
+  # Pushes to main additionally build and deploy the runtime image.
   push:
     branches: [main]
+  # Manual dispatch lets maintainers verify the pipeline after secret or
+  # infrastructure changes without creating a dummy commit.
   workflow_dispatch:
 
 permissions:
+  # The workflow only needs to read repository contents; deployments use the
+  # Hugging Face token stored as a secret instead of broad GitHub permissions.
   contents: read
 
 concurrency:
+  # New commits supersede older CI runs for the same branch, saving minutes on
+  # repeated pushes while keeping main protected by the latest result.
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
@@ -22,6 +30,8 @@ jobs:
       run:
         working-directory: deployment
     env:
+      # Optional integrations are disabled in CI so tests stay deterministic and
+      # do not require database, Kafka, MLflow, or Hub credentials.
       DB_LOGGING_ENABLED: "false"
       KAFKA_ENABLED: "false"
       MLFLOW_ENABLED: "false"
@@ -35,6 +45,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          # Cache both runtime and test requirement files so dependency changes
+          # correctly invalidate the pip cache.
           cache: pip
           cache-dependency-path: |
             deployment/requirements-runtime.txt
@@ -46,6 +58,8 @@ jobs:
           pip install -r requirements-test.txt
 
       - name: Run lightweight test suite
+        # Coverage is reported in the terminal to keep CI simple without
+        # requiring an external coverage upload service.
         run: pytest --cov=app --cov=kafka_pipeline --cov-report=term-missing
 
   docker-build:
@@ -69,6 +83,8 @@ jobs:
     timeout-minutes: 20
     environment: production
     env:
+      # The target Space and health URL are kept explicit so deployment logs
+      # show exactly which runtime is being updated and verified.
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       HF_SPACE_ID: a1mohamadd/lung-disease-detection-api
       SPACE_HEALTH_URL: https://a1mohamadd-lung-disease-detection-api.hf.space/health
@@ -86,6 +102,8 @@ jobs:
         run: pip install huggingface-hub==1.2.1
 
       - name: Verify deployment token
+        # Fail before preparing/uploading a bundle when production secrets are
+        # missing from the repository or environment.
         run: |
           if [ -z "$HF_TOKEN" ]; then
             echo "GitHub secret HF_TOKEN is required for deployment."
@@ -93,6 +111,8 @@ jobs:
           fi
 
       - name: Prepare Space bundle
+        # The Space receives only deployable runtime files, not notebooks,
+        # training artifacts, compose files, or local development assets.
         run: |
           mkdir -p space-bundle/assets
           cp deployment/Dockerfile.runtime space-bundle/Dockerfile
@@ -109,6 +129,8 @@ jobs:
             --commit-message "Deploy GitHub commit $GITHUB_SHA"
 
       - name: Wait for deployed API
+        # Hugging Face Spaces rebuild asynchronously after upload; poll the
+        # public health endpoint until the new container is serving traffic.
         run: |
           for attempt in $(seq 1 45); do
             if curl --fail --silent --show-error "$SPACE_HEALTH_URL"; then
