@@ -1,3 +1,5 @@
+"""Manual local inference entry point for quick model sanity checks."""
+
 import os
 from pathlib import Path
 
@@ -15,6 +17,7 @@ tf.get_logger().setLevel("ERROR")
 
 
 def main(image_path: str) -> None:
+    """Run the full detector on one local image path and print predictions."""
     img = load_image(image_path, target_size=AppConfig.IMAGE_SIZE)
     lung_detector = LungDetection()
     results = lung_detector.predict(img)
