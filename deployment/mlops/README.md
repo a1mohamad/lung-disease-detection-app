@@ -1,10 +1,10 @@
 # MLOps
 
-![MLflow](https://img.shields.io/badge/MLflow-Tracking%20%7C%20Registry-0194E2)
-![Airflow](https://img.shields.io/badge/Airflow-Orchestration-017CEE?logo=apacheairflow&logoColor=white)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-Retraining-FF6F00?logo=tensorflow&logoColor=white)
-![ONNX](https://img.shields.io/badge/ONNX-Release%20Validation-005CED?logo=onnx&logoColor=white)
-![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Optional%20Publishing-FFD21E?logo=huggingface&logoColor=black)
+[![MLflow](https://img.shields.io/badge/MLflow-Tracking%20%7C%20Registry-0194E2)](https://mlflow.org/)
+[![Airflow](https://img.shields.io/badge/Airflow-Orchestration-017CEE?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-Retraining-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
+[![ONNX](https://img.shields.io/badge/ONNX-Release%20Validation-005CED?logo=onnx&logoColor=white)](https://onnx.ai/)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Optional%20Publishing-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/)
 
 Evaluation, retraining, tracking, registry, release, and reviewed-data ingestion workflows for the lung disease detection platform.
 
