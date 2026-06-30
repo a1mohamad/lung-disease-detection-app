@@ -1,3 +1,5 @@
+"""Reviewed-data snapshot builder for prepared retraining datasets."""
+
 from __future__ import annotations
 
 import csv
@@ -22,6 +24,14 @@ from mlops.core.ingestion.storage import (
 
 @dataclass(frozen=True)
 class SnapshotRecord:
+    """Reviewed record plus lazy image and mask readers.
+
+    Attributes:
+        record: Reviewed-data manifest record.
+        read_image: Callable that loads raw image bytes on demand.
+        read_mask: Callable that loads raw mask bytes on demand.
+    """
+
     record: ReviewedRecord
     read_image: Callable[[], bytes]
     read_mask: Callable[[], bytes]
@@ -30,12 +40,33 @@ class SnapshotRecord:
 def prepare_reviewed_snapshot(
     interval_end: datetime | str | None = None,
 ) -> dict[str, object]:
+    """Build or reuse a fingerprinted TFRecord snapshot for reviewed data.
+
+    The snapshot is the handoff point between reviewed clinical-style examples
+    and retraining jobs. It gathers eligible reviewed batches, optionally mixes
+    in the baseline research dataset, applies stable patient-level splits,
+    writes TFRecord shards, and records a manifest that can be audited later.
+
+    Args:
+        interval_end: Inclusive cutoff timestamp for reviewed batches. Strings
+            are parsed as ISO-8601 and normalized to UTC.
+
+    Returns:
+        Snapshot metadata including directory, dataset mode, fingerprint, and
+        per-split counts.
+
+    Raises:
+        RuntimeError: If no reviewed data is available, a conflicting snapshot
+        exists, or TFRecord generation cannot complete.
+    """
     cutoff = _parse_interval_end(interval_end)
     class_mapping = _load_class_mapping(MLOpsSettings.REVIEWED_DATA_CLASS_MAPPING)
     records, sources = _collect_records(cutoff)
     if not records:
         raise RuntimeError("No reviewed records are available for this retraining snapshot.")
 
+    # The fingerprint makes snapshot creation idempotent: the same cutoff,
+    # sources, classes, split seed, and shard count resolve to the same dataset.
     fingerprint = _snapshot_fingerprint(cutoff, sources, class_mapping)
     snapshot_id = cutoff.strftime("snapshot-%Y%m%dT%H%M%SZ")
     snapshot_dir = MLOpsSettings.RETRAIN_SNAPSHOT_ROOT / snapshot_id
@@ -49,6 +80,8 @@ def prepare_reviewed_snapshot(
     )
     assignments = registry.assign(item.record for item in records)
 
+    # Write to a hidden temporary directory first so downstream jobs never read
+    # a half-written snapshot as if it were production-ready.
     temp_dir = snapshot_dir.with_name(f".{snapshot_id}.tmp")
     if temp_dir.exists():
         raise RuntimeError(
@@ -98,6 +131,17 @@ def prepare_reviewed_snapshot(
 def _collect_records(
     cutoff: datetime,
 ) -> tuple[list[SnapshotRecord], list[dict[str, object]]]:
+    """Collect baseline and reviewed records available before the cutoff.
+
+    Args:
+        cutoff: Inclusive snapshot cutoff normalized to UTC.
+
+    Returns:
+        Snapshot records plus source metadata used for fingerprinting.
+
+    Raises:
+        ValueError: If duplicate sample ids are found across sources.
+    """
     records: list[SnapshotRecord] = []
     sources: list[dict[str, object]] = []
 
@@ -134,6 +178,15 @@ def _collect_records(
 
 
 def _load_baseline_records() -> tuple[list[SnapshotRecord], dict[str, object]]:
+    """Load legacy research data as baseline records for reviewed snapshots.
+
+    Returns:
+        Baseline snapshot records and a source descriptor for the CSV input.
+
+    Raises:
+        FileNotFoundError: If the configured baseline CSV is missing.
+        ValueError: If the CSV lacks required columns.
+    """
     csv_path = MLOpsSettings.REVIEWED_DATA_BASELINE_CSV
     if not csv_path.is_file():
         raise FileNotFoundError(f"Baseline training CSV not found: {csv_path}")
@@ -184,6 +237,16 @@ def _records_from_batch(
     storage: ReviewedDataStorage,
     cutoff: datetime,
 ) -> list[SnapshotRecord]:
+    """Convert a reviewed manifest batch into snapshot records.
+
+    Args:
+        batch: Parsed reviewed-data manifest batch.
+        storage: Storage adapter used to lazily read image and mask bytes.
+        cutoff: Inclusive cutoff; records at or after this time are skipped.
+
+    Returns:
+        Snapshot records with lazy image and mask readers.
+    """
     result = []
     for original in batch.records:
         if original.reviewed_at >= cutoff:
@@ -206,6 +269,12 @@ def _write_snapshot(
     class_mapping: dict[str, int],
     output_dir: Path,
 ) -> Counter:
+    """Write split TFRecord shards and a JSONL inventory for a snapshot.
+
+    Each record is checksum-validated, converted to canonical PNG bytes, routed
+    to the patient-level split assigned by ``SplitRegistry``, and written to a
+    deterministic shard based on ``sample_id``.
+    """
     try:
         import tensorflow as tf
     except ImportError as exc:
@@ -290,6 +359,21 @@ def _canonical_png(
     record: ReviewedRecord,
     kind: str,
 ) -> bytes:
+    """Validate image bytes and encode them as canonical PNG.
+
+    Args:
+        raw: Original image or mask bytes from storage.
+        mode: Pillow conversion mode such as ``RGB`` or ``L``.
+        record: Reviewed record used for contextual error messages.
+        kind: Human-readable object kind, usually ``image`` or ``mask``.
+
+    Returns:
+        PNG-encoded bytes in the requested mode.
+
+    Raises:
+        RuntimeError: If Pillow is not installed.
+        ValueError: If the object cannot be decoded as an image.
+    """
     try:
         from PIL import Image
     except ImportError as exc:
@@ -313,6 +397,17 @@ def _check_checksum(
     record: ReviewedRecord,
     kind: str,
 ) -> None:
+    """Validate an optional SHA-256 checksum for a reviewed object.
+
+    Args:
+        raw: Object bytes to validate.
+        expected: Optional expected SHA-256 hex digest.
+        record: Reviewed record used for contextual error messages.
+        kind: Human-readable object kind, usually ``image`` or ``mask``.
+
+    Raises:
+        ValueError: If a checksum is present and does not match.
+    """
     if expected and hashlib.sha256(raw).hexdigest() != expected:
         raise ValueError(
             f"{kind} checksum mismatch for sample '{record.sample_id}' "
@@ -321,14 +416,44 @@ def _check_checksum(
 
 
 def _bytes_feature(value: bytes, tf):
+    """Create a bytes feature for TFRecord serialization.
+
+    Args:
+        value: Raw bytes to store.
+        tf: TensorFlow module imported lazily by the caller.
+
+    Returns:
+        TensorFlow bytes feature.
+    """
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
 def _int64_feature(value: int, tf):
+    """Create an int64 feature for TFRecord serialization.
+
+    Args:
+        value: Integer class id to store.
+        tf: TensorFlow module imported lazily by the caller.
+
+    Returns:
+        TensorFlow int64 feature.
+    """
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
 def _load_class_mapping(path: Path) -> dict[str, int]:
+    """Load and validate the expected four-class mapping.
+
+    Args:
+        path: JSON mapping from class names to integer ids.
+
+    Returns:
+        Validated mapping for the supported lung-disease classes.
+
+    Raises:
+        FileNotFoundError: If the mapping file is missing.
+        ValueError: If the mapping schema or label set is invalid.
+    """
     if not path.is_file():
         raise FileNotFoundError(f"Class mapping not found: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -345,6 +470,16 @@ def _snapshot_fingerprint(
     sources: list[dict[str, object]],
     class_mapping: dict[str, int],
 ) -> str:
+    """Compute a deterministic snapshot fingerprint from inputs and settings.
+
+    Args:
+        cutoff: Snapshot cutoff timestamp.
+        sources: Source descriptors included in the snapshot.
+        class_mapping: Class-name to integer-id mapping.
+
+    Returns:
+        SHA-256 digest representing the snapshot inputs and key settings.
+    """
     payload = {
         "interval_end": cutoff.isoformat(),
         "sources": sources,
@@ -360,6 +495,18 @@ def _existing_snapshot(
     snapshot_dir: Path,
     fingerprint: str,
 ) -> dict[str, object] | None:
+    """Return an existing snapshot when its fingerprint matches.
+
+    Args:
+        snapshot_dir: Expected snapshot output directory.
+        fingerprint: Fingerprint for the requested snapshot inputs.
+
+    Returns:
+        Existing snapshot metadata when reusable, otherwise ``None``.
+
+    Raises:
+        RuntimeError: If the directory exists but is incomplete or mismatched.
+    """
     if not snapshot_dir.exists():
         return None
     manifest_path = snapshot_dir / "manifest.json"
@@ -379,6 +526,17 @@ def _existing_snapshot(
 
 
 def _baseline_key(value: str) -> str:
+    """Normalize a baseline CSV path into a safe storage key.
+
+    Args:
+        value: Path value read from the baseline CSV.
+
+    Returns:
+        Clean root-relative key usable by the local storage adapter.
+
+    Raises:
+        ValueError: If the path is empty or attempts traversal.
+    """
     clean = value.strip().replace("\\", "/")
     while clean.startswith("./"):
         clean = clean[2:]
@@ -388,6 +546,17 @@ def _baseline_key(value: str) -> str:
 
 
 def _parse_interval_end(value: datetime | str | None) -> datetime:
+    """Parse a snapshot cutoff timestamp and normalize it to UTC.
+
+    Args:
+        value: Datetime, ISO-8601 string, or ``None`` for current UTC time.
+
+    Returns:
+        Timezone-aware UTC datetime.
+
+    Raises:
+        ValueError: If a string cannot be parsed as ISO-8601.
+    """
     if value is None:
         return datetime.now(timezone.utc)
     if isinstance(value, str):
