@@ -4,7 +4,9 @@
 [![Airflow](https://img.shields.io/badge/Airflow-Orchestration-017CEE?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-Retraining-FF6F00?logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
 [![ONNX](https://img.shields.io/badge/ONNX-Release%20Validation-005CED?logo=onnx&logoColor=white)](https://onnx.ai/)
-[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Optional%20Publishing-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/)
+[![Hugging Face Models](https://img.shields.io/badge/Hugging%20Face-Model%20Publishing-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/a1mohamadd/lung-disease-detection)
+[![Render PostgreSQL](https://img.shields.io/badge/Render-Model%20Logs%20DB-46E3B7?logo=render&logoColor=black)](https://render.com/docs/databases)
+[![Supabase](https://img.shields.io/badge/Supabase-Reviewed%20Data%20%7C%20Artifacts-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/storage)
 
 Evaluation, retraining, tracking, registry, release, and reviewed-data ingestion workflows for the lung disease detection platform.
 
@@ -41,6 +43,8 @@ The MLOps layer exists to make model updates measurable, repeatable, and auditab
 - ONNX export and numerical validation
 - optional Hugging Face publishing
 - Airflow orchestration
+
+In the public deployment, promoted artifacts are designed to be synchronized with Hugging Face Hub so the Hugging Face Space runtime can download the same validated ONNX/Keras artifacts that were produced by the release workflow.
 
 ---
 
@@ -243,6 +247,13 @@ If the candidate improves:
 5. artifacts can be published to Hugging Face Hub
 
 Release metadata is written as `release.json` beside staged artifacts.
+
+Configured live model destination:
+
+```text
+HF_MODEL_REPO_ID=a1mohamadd/lung-disease-detection
+HF_MODEL_REPO_TYPE=model
+```
 
 ---
 
