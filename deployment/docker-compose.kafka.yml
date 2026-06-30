@@ -1,4 +1,6 @@
 services:
+  # Zookeeper is required by this Confluent Kafka image line. It is scoped to
+  # local development and keeps the Kafka stack easy to run on one machine.
   zookeeper:
     image: confluentinc/cp-zookeeper:${KAFKA_IMAGE_TAG:-7.6.1}
     container_name: ${ZOOKEEPER_CONTAINER_NAME:-lung-zookeeper}
@@ -8,6 +10,8 @@ services:
     ports:
       - "${ZOOKEEPER_CLIENT_PORT:-2181}:2181"
 
+  # Single-broker Kafka instance for local prediction events. Replication is set
+  # to one because this is a portfolio/dev topology, not a production cluster.
   kafka:
     image: confluentinc/cp-kafka:${KAFKA_IMAGE_TAG:-7.6.1}
     container_name: ${KAFKA_CONTAINER_NAME:-lung-kafka}
@@ -24,6 +28,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
+  # Lightweight browser UI for inspecting topics, messages, and consumer groups
+  # during demos or debugging.
   kafka-ui:
     image: provectuslabs/kafka-ui:${KAFKA_UI_IMAGE_TAG:-v0.7.2}
     container_name: ${KAFKA_UI_CONTAINER_NAME:-lung-kafka-ui}
