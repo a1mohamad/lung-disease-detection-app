@@ -1,3 +1,5 @@
+"""Keras segmentation wrapper for lung mask prediction."""
+
 from pathlib import Path
 
 import tensorflow as tf
@@ -10,7 +12,24 @@ from app.utils.metrics import dice_coefficient
 from app.utils.model_loader import load_keras_model
 
 class SegmentationModel:
+    """Keras-backed segmentation model that produces binary lung masks.
+
+    The segmentation model is the first model in the inference pipeline. Its
+    mask becomes both a review artifact and an input to ROI/masked classifier
+    preprocessing.
+    """
+
     def __init__(self, model_dir: Path):
+        """Load segmentation metadata, threshold, normalization flag, and model.
+
+        Args:
+            model_dir: Directory containing segmentation metadata and Keras
+                artifact.
+
+        Raises:
+            ArtifactError: If required metadata fields are missing.
+            ModelError: If the Keras segmentation model cannot be loaded.
+        """
         metadata = load_metadata(model_dir)
 
         model_cfg = metadata.get("model", {})
@@ -49,8 +68,21 @@ class SegmentationModel:
             ) from exc
 
     def predict_mask(self, img: tf.Tensor) -> tf.Tensor:
+        """Predict and threshold a lung mask for one image batch.
+
+        Args:
+            img: Image batch shaped for the segmentation model.
+
+        Returns:
+            Binary float32 mask with the batch dimension removed.
+
+        Raises:
+            InferenceError: If normalization, prediction, or thresholding fails.
+        """
         try:
             if not self.is_normalized:
+                # Some exported segmentation models expect ImageNet-style input
+                # even though the API image loader preserves raw [0, 255] values.
                 img = normalize_image(img, mode="imagenet")
             preds = self.model(img, verbose=0)
             pred_mask = tf.cast(preds > self.threshold, tf.float32)
