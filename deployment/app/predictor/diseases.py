@@ -1,3 +1,5 @@
+"""Keras disease subtype classifier for unhealthy scans."""
+
 import json
 from json import JSONDecodeError
 from pathlib import Path
@@ -13,7 +15,25 @@ from app.utils.model_loader import load_keras_model
 
 
 class DiseasesClassifier:
+    """Keras-backed multiclass classifier for unhealthy scan subtyping.
+
+    This runtime mirrors ``DiseasesOnnxClassifier`` for environments where the
+    original Keras artifact or MLflow registry is used directly. It expects an
+    ROI image from the segmentation pipeline and returns probabilities across
+    the configured disease labels.
+    """
+
     def __init__(self, model_dir: Path) -> None:
+        """Load disease classifier metadata, class labels, and Keras model.
+
+        Args:
+            model_dir: Directory containing ``metadata.yaml`` and the Keras
+                model artifact.
+
+        Raises:
+            ArtifactError: If metadata or class-map information is invalid.
+            ModelError: If the Keras artifact cannot be loaded.
+        """
         metadata = load_metadata(model_dir)
         model_cfg = metadata.get("model", {})
         model_rel_path = model_cfg.get("path")
@@ -36,6 +56,9 @@ class DiseasesClassifier:
                 "Failed to load model.",
                 {"path": str(self.model_path)},
             ) from exc
+        # DenseNet preprocessing is part of the trained artifact contract, so
+        # the wrapper keeps it beside the model rather than scattering it in API
+        # service code.
         self.preprocess = preprocess_input
 
         classes = metadata.get("output", {}).get("classes", None)
@@ -45,12 +68,31 @@ class DiseasesClassifier:
             self.class_map = self._load_json_map(AppConfig.DISEASES_JSON)
 
     def _normalize_class_map(self, classes: Optional[Dict[Any, Any]]) -> Dict[int, str]:
+        """Convert YAML class keys to integer labels.
+
+        Args:
+            classes: Optional class mapping loaded from model metadata.
+
+        Returns:
+            Mapping from integer class id to display label.
+        """
         if not classes:
             return {}
         
         return {int(k): v for k, v in classes.items()}
         
     def _load_json_map(self, path: Path) -> Dict[int, str]:
+        """Load a fallback disease class mapping from JSON.
+
+        Args:
+            path: JSON mapping file path.
+
+        Returns:
+            Mapping from integer class id to disease label.
+
+        Raises:
+            ArtifactError: If the JSON file exists but cannot be parsed.
+        """
         if not path.exists():
             return {}
         try:
@@ -66,6 +108,19 @@ class DiseasesClassifier:
         return {int(k): v for k, v in data.items()}
 
     def predict(self, roi_img: tf.Tensor) -> Dict[str, Any]:
+        """Predict disease subtype probabilities for one lung ROI.
+
+        Args:
+            roi_img: Cropped lung-region image produced by the segmentation
+                pipeline.
+
+        Returns:
+            Dictionary containing ``probs_by_label``, numeric ``label``, and
+            human-readable ``label_name``.
+
+        Raises:
+            InferenceError: If preprocessing or model inference fails.
+        """
         try:
             roi_img = ensure_batch(roi_img)
             roi_img = self.preprocess(roi_img)
