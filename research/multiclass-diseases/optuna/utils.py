@@ -141,17 +141,24 @@ def count_steps_from_dataset(dataset):
         tf.constant(0, tf.int64), lambda x, _: x + 1
     ).numpy()
 
-'''
-Professional ROI Crop instead of Hard Masking
-10% margin preserved for anatomical context.
-'''
 def lung_roi_preprocess(image, mask, label):
+    """Crop a lung-centered ROI for multiclass Optuna experiments.
+
+    The crop uses the segmentation mask to focus the classifier on lung tissue.
+    When the mask is empty, the full image is resized so exploratory trials do
+    not fail because of a single weak segmentation sample.
+    """
     mask_2d = tf.cast(mask[:, :, 0], tf.float32)
     indices = tf.where(mask_2d > 0.5)
 
     img_shape = tf.shape(image)
 
     def crop():
+        """Crop and resize the mask bounding box when lung pixels are present.
+
+        Returns:
+            Resized lung ROI tensor.
+        """
         min_coords = tf.cast(tf.reduce_min(indices, axis=0), tf.int32)
         max_coords = tf.cast(tf.reduce_max(indices, axis=0), tf.int32)
 
@@ -180,6 +187,11 @@ def lung_roi_preprocess(image, mask, label):
         return tf.image.resize(cropped, (256, 256))
 
     def fallback():
+        """Resize the full image when no mask foreground is available.
+
+        Returns:
+            Resized full-image tensor.
+        """
         return tf.image.resize(image, (256, 256))
 
     image = tf.cond(tf.shape(indices)[0] > 0, crop, fallback)
@@ -188,9 +200,11 @@ def lung_roi_preprocess(image, mask, label):
 
 
 def get_dataset_metadata(dataset, batch_size):
-    '''
-    Professional one-pass logic to get counts, weights, and steps simultaneously.
-    '''
+    """Compute class counts, class weights, and epoch steps in one pass.
+
+    The returned metadata is used by Optuna trials to configure class weighting
+    and training-step counts without repeatedly scanning the same dataset.
+    """
     # 1. Initialize a zero tensor for the 3 classes
     initial_state = tf.zeros((3,), dtype=tf.float32)
     
@@ -220,10 +234,11 @@ def get_dataset_metadata(dataset, batch_size):
 
 
 def cleanup(model, history, callbacks_list):
-    '''
-    Explicitly clears the Keras session, deletes large objects, 
-    and forces garbage collection to prevent RAM bloat.
-    '''
+    """Release large training objects and clear the Keras backend session.
+
+    Optuna can create many short-lived models in one notebook kernel. Clearing
+    references and Keras state between trials reduces memory drift.
+    """
     try:
         if history is not None:
             del history
@@ -245,7 +260,24 @@ def cleanup(model, history, callbacks_list):
 
 
 def make_remap_for_multiclass(num_classes):
+    """Create a mapper that converts raw disease labels into one-hot targets.
+
+    Args:
+        num_classes: Number of disease classes after filtering Normal.
+
+    Returns:
+        Mapping function for ``tf.data.Dataset.map``.
+    """
     def remap_for_multiclass(image, label):
+        """Map COVID, Viral Pneumonia, and Lung Opacity to contiguous labels.
+
+        Args:
+            image: ROI image tensor.
+            label: Raw dataset label.
+
+        Returns:
+            Tuple of image tensor and one-hot disease label.
+        """
         KEYS = tf.constant([0, 2, 3], dtype= tf.int32)
         VALUES = tf.constant([0, 1, 2], dtype= tf.int32)
         TABLE = tf.lookup.StaticHashTable(
@@ -260,8 +292,10 @@ def make_remap_for_multiclass(num_classes):
 def penalized_f1_score(history, config, mode=None, loss=False):
 
     
-    """
-    Your exact rolling window penalized F1 score function
+    """Score a trial by F1 while penalizing unstable validation behavior.
+
+    The objective favors high validation F1 but subtracts penalties for
+    precision/recall imbalance and optional train-validation loss gaps.
     """
     alpha_p = config['alpha_p']
     stage_epochs = config['stage']
@@ -307,6 +341,11 @@ def penalized_f1_score(history, config, mode=None, loss=False):
     return score, f1, prec, rec
 
 def unfreeze_backbone(model, backbone_name= None, unfreeze_layer= None):
+    """Freeze or selectively unfreeze a backbone for fine-tuning.
+
+    Batch normalization layers remain frozen during selective unfreezing to
+    preserve pretrained statistics and keep Optuna comparisons stable.
+    """
     base_model = model.get_layer(backbone_name)
     
     if unfreeze_layer is None:
@@ -335,6 +374,16 @@ def unfreeze_backbone(model, backbone_name= None, unfreeze_layer= None):
     return model
 
 def compile_model(model, loss, optimizer):
+    """Compile a multiclass model with accuracy, precision, recall, F1, and AUC.
+
+    Args:
+        model: Keras model to compile.
+        loss: Keras loss function.
+        optimizer: Keras optimizer.
+
+    Returns:
+        Compiled model instance.
+    """
     model.compile(
         loss=loss,
         optimizer=optimizer,
@@ -349,6 +398,12 @@ def compile_model(model, loss, optimizer):
     return model
 
 def multiclass_dataset(tfrecords, config, is_training= True, image_augmentation=None):
+    """Build a multiclass disease-classification dataset from TFRecord files.
+
+    Normal samples are filtered out, disease labels are remapped to one-hot
+    targets, lung ROIs are cropped, training augmentation is optional, and the
+    result is prefetched for efficient trial execution.
+    """
     shuffle_size = config["shuffle"]
     batch_size = config["batch_size"]
     AUTO = config["auto"]
@@ -385,6 +440,11 @@ def multiclass_dataset(tfrecords, config, is_training= True, image_augmentation=
     return dataset
 
 def gpu_growth():
+    """Enable TensorFlow GPU memory growth for notebook experiments.
+
+    This prevents TensorFlow from reserving all visible GPU memory at startup,
+    which is helpful for repeated Optuna trials in one interactive session.
+    """
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         try:
@@ -401,6 +461,12 @@ def densenet_model(
     hparams, dropout_rate,
     config=None, phase=None
 ):
+    """Build a DenseNet121 classifier head for Optuna trials.
+
+    The pretrained backbone remains frozen while the trial controls the dense
+    head and dropout behavior. This keeps architecture comparisons focused on
+    the classifier head rather than full-network fine-tuning noise.
+    """
     
     img_size = config["img_size"]
     num_classes = config["num_classes"]
