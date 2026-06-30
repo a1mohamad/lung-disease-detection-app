@@ -70,6 +70,12 @@ def get_strategy():
     return strategy
 
 def gpu_growth():
+    """Enable TensorFlow GPU memory growth for notebook experiments.
+
+    Memory growth prevents TensorFlow from reserving all GPU memory at process
+    startup, which makes iterative notebook runs and parallel tooling easier to
+    manage on shared development machines.
+    """
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         try:
@@ -135,12 +141,23 @@ def make_parse_fn(config):
     return parse_fn
 
 def lung_roi_preprocess(image, mask, label):
+    """Crop a lung-centered ROI for multiclass disease experiments.
+
+    The mask-derived crop keeps disease classification focused on lung tissue.
+    Empty masks fall back to resizing the full image so data iteration continues
+    and the problematic sample can still be inspected later.
+    """
     mask_2d = tf.cast(mask[:, :, 0], tf.float32)
     indices = tf.where(mask_2d > 0.5)
 
     img_shape = tf.shape(image)
 
     def crop():
+        """Crop and resize the mask bounding box when lung pixels are present.
+
+        Returns:
+            Resized lung ROI tensor.
+        """
         min_coords = tf.cast(tf.reduce_min(indices, axis=0), tf.int32)
         max_coords = tf.cast(tf.reduce_max(indices, axis=0), tf.int32)
 
@@ -169,6 +186,11 @@ def lung_roi_preprocess(image, mask, label):
         return tf.image.resize(cropped, (256, 256))
 
     def fallback():
+        """Resize the full image when no mask foreground is available.
+
+        Returns:
+            Resized full-image tensor.
+        """
         return tf.image.resize(image, (256, 256))
 
     image = tf.cond(tf.shape(indices)[0] > 0, crop, fallback)
@@ -176,7 +198,24 @@ def lung_roi_preprocess(image, mask, label):
     return image, label
 
 def make_remap_for_multiclass(num_classes):
+    """Create a mapper that converts raw disease labels into one-hot targets.
+
+    Args:
+        num_classes: Number of disease classes after filtering Normal.
+
+    Returns:
+        Mapping function for ``tf.data.Dataset.map``.
+    """
     def remap_for_multiclass(image, label):
+        """Map COVID, Viral Pneumonia, and Lung Opacity to contiguous labels.
+
+        Args:
+            image: ROI image tensor.
+            label: Raw dataset label.
+
+        Returns:
+            Tuple of image tensor and one-hot disease label.
+        """
         KEYS = tf.constant([0, 2, 3], dtype= tf.int32)
         VALUES = tf.constant([0, 1, 2], dtype= tf.int32)
         TABLE = tf.lookup.StaticHashTable(
@@ -190,6 +229,12 @@ def make_remap_for_multiclass(num_classes):
 
 
 def multiclass_dataset(tfrecords, config, is_training= True, image_augmentation=None):
+    """Build a multiclass disease-classification dataset from TFRecord files.
+
+    The pipeline filters out normal samples, crops lung ROIs, remaps disease
+    labels to contiguous one-hot targets, applies training-only augmentation,
+    and prefetches batches for GPU-efficient notebook experiments.
+    """
     shuffle_size = config["shuffle"]
     batch_size = config["batch_size"]
     AUTO = config["auto"]
@@ -227,6 +272,12 @@ def multiclass_dataset(tfrecords, config, is_training= True, image_augmentation=
 
 
 def unfreeze_backbone(model, backbone_name= None, unfreeze_layer= None):
+    """Freeze or selectively unfreeze a backbone for fine-tuning.
+
+    Batch normalization layers remain frozen even when later convolutional
+    layers are unfrozen. This preserves pretrained moving statistics and avoids
+    destabilizing small medical-image fine-tuning runs.
+    """
     base_model = model.get_layer(backbone_name)
     
     if unfreeze_layer is None:
@@ -258,6 +309,12 @@ def densenet_model(
     hparams, dropout_rate,
     config=None, phase=None
 ):
+    """Build a DenseNet121 classifier head for architecture searches.
+
+    Optuna controls the dense head while the pretrained DenseNet backbone stays
+    frozen. The ``phase`` flag selects whether dropout is evaluated for
+    architecture search or final hyperparameter optimization.
+    """
     
     img_size = config["img_size"]
     num_classes = config["num_classes"]
@@ -296,9 +353,12 @@ def densenet_model(
     return model
 
 def get_dataset_metadata(dataset, batch_size):
-    '''
-    Professional one-pass logic to get counts, weights, and steps simultaneously.
-    '''
+    """Compute class counts, class weights, and epoch steps in one pass.
+
+    Returns a compact metadata dictionary used by notebooks to configure class
+    balancing and training step counts without making multiple passes through
+    the same dataset.
+    """
     # 1. Initialize a zero tensor for the 3 classes
     initial_state = tf.zeros((3,), dtype=tf.float32)
     
