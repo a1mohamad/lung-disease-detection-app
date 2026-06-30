@@ -1,3 +1,5 @@
+"""Startup checks and resource factories for the inference API."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -13,9 +15,19 @@ from app.utils.metadata import load_metadata
 
 
 def check_paths_and_metadata() -> None:
+    """Validate required model artifacts before the API accepts traffic.
+
+    The application should fail during startup rather than during the first
+    clinical-style prediction request. This check verifies local or downloaded
+    model directories, ``metadata.yaml`` files, metadata readability, and the
+    prediction artifact output directory.
+
+    Raises:
+        ArtifactError: If a required model directory or metadata file is missing.
+    """
     ensure_models_available_from_huggingface()
 
-    # model directories
+    # Fail fast on artifact problems so broken deployments never become healthy.
     required_dirs = [
         AppConfig.UNET_PATH,
         AppConfig.DENSENET_PATH,
@@ -29,24 +41,36 @@ def check_paths_and_metadata() -> None:
         if not p.exists():
             raise ArtifactError("MODEL_PATH_MISSING", f"Missing model path: {p}")
 
-        # validate metadata.yaml exists and is readable
         meta_path = AppConfig.get_metadata_path(p)
         if not meta_path.exists():
             raise ArtifactError("METADATA_MISSING", f"Missing metadata: {meta_path}")
 
-        # will raise if invalid
         _ = load_metadata(p)
 
-    # output folder
     AppConfig.PREDICTION_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def create_detector() -> LungDetection:
+    """Create the process-wide lung detection pipeline instance.
+
+    Returns:
+        Initialized ``LungDetection`` object with all configured model wrappers.
+    """
     return LungDetection()
 
 
 def warmup(detector: LungDetection) -> None:
-    # create a dummy input image (batch 1, 256x256, 3)
+    """Execute a small prediction to initialize model sessions before traffic.
+
+    Args:
+        detector: Process-wide prediction pipeline.
+
+    Notes:
+        Warmup catches lazy model/session failures during startup and reduces
+        first-request latency after the service becomes healthy.
+    """
+    # Create a dummy input image (batch 1, configured size, RGB channels). This
+    # exercises segmentation and binary prediction without needing real data.
     dummy = np.zeros(
         (1, AppConfig.IMAGE_SIZE[0], AppConfig.IMAGE_SIZE[1], 3), dtype=np.float32
     )
@@ -54,6 +78,11 @@ def warmup(detector: LungDetection) -> None:
 
 
 def init_database() -> None:
+    """Create prediction logging tables when database logging is enabled.
+
+    The call is intentionally skipped for stateless deployments and cloud
+    topologies that disable direct prediction logging.
+    """
     if not AppConfig.DB_LOGGING_ENABLED:
         return
 
