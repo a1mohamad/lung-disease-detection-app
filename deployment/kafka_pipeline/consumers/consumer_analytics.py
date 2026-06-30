@@ -1,3 +1,5 @@
+"""Kafka consumer that writes compact analytics records."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,6 +11,15 @@ OUT = Path("runtime/analytics_events.jsonl")
 
 
 def _best_model(models: dict) -> tuple[str | None, float | None]:
+    """Return the binary model with the highest unhealthy probability.
+
+    Args:
+        models: Per-model ensemble result dictionary from the API response.
+
+    Returns:
+        Tuple of ``(model_name, probability)`` for the strongest unhealthy
+        signal, or ``(None, None)`` when no valid model entries exist.
+    """
     best_name = None
     best_prob = None
     for name, result in models.items():
@@ -22,6 +33,12 @@ def _best_model(models: dict) -> tuple[str | None, float | None]:
 
 
 def main() -> None:
+    """Consume prediction events and append analytics JSONL records.
+
+    The analytics consumer writes compact derived records rather than the full
+    prediction payload. This keeps downstream dashboards lightweight while the
+    database consumer preserves the full normalized prediction log.
+    """
     if not AppConfig.KAFKA_ENABLED:
         print("KAFKA_ENABLED=false, analytics consumer stopped.")
         return
@@ -36,6 +53,8 @@ def main() -> None:
 
             payload = event["payload"]
             models = payload.get("models_results", {})
+            # Store a simple "strongest model" signal so model disagreement can
+            # be tracked later without reprocessing the full event payload.
             best_name, best_prob = _best_model(models if isinstance(models, dict) else {})
             out = {
                 "occurred_at": event.get("occurred_at"),
