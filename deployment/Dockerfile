@@ -1,4 +1,6 @@
 FROM python:3.11-slim
+# Install the Microsoft ODBC driver because the full local stack uses SQL Server
+# for prediction logs and MLflow backend storage.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl gnupg unixodbc-dev gcc g++ ca-certificates \
     && mkdir -p /etc/apt/keyrings \
@@ -10,8 +12,12 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
+# Install dependencies before copying the full project so Docker can cache the
+# dependency layer when only application code changes.
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY . /app
+# PYTHONPATH lets uvicorn import app.* and kafka_pipeline.* from the deployment
+# root in the same way local commands do.
 ENV PYTHONPATH=/app
 CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
