@@ -6,10 +6,14 @@
 [![SQL Server](https://img.shields.io/badge/SQL%20Server-Supported-CC2927?logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
 [![Kafka](https://img.shields.io/badge/Kafka-Optional-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
 [![Docker](https://img.shields.io/badge/Docker-Runtime-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+
+**Live Runtime Services**
+
 [![Hugging Face Space](https://img.shields.io/badge/Hugging%20Face-Live%20API%20Space-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api)
 [![Render PostgreSQL](https://img.shields.io/badge/Render-PostgreSQL-46E3B7?logo=render&logoColor=black)](https://render.com/docs/databases)
 [![Supabase Storage](https://img.shields.io/badge/Supabase-Image%20Storage-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/storage)
-[![GitHub Pages Frontend](https://img.shields.io/badge/GitHub%20Pages-Frontend-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/apps/lung-disease-detection/)
+[![Live Web App](https://img.shields.io/badge/Live%20Web%20App-GitHub%20Pages-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/apps/lung-disease-detection/app)
+[![Research Lab](https://img.shields.io/badge/Research%20Lab-Project%20Page-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/research/lung-disease-detection/index.html)
 
 Deployable application package for the lung disease detection platform. This folder contains the FastAPI runtime, model loading layer, inference pipeline, static frontend bundle, persistence, Kafka integration, Docker files, tests, and MLOps infrastructure.
 
@@ -120,16 +124,17 @@ The current public deployment uses managed services around the containerized API
 
 | Component | Provider | Link / Setting |
 |---|---|---|
-| Browser frontend | GitHub Pages | [live app](https://a1mohamad.github.io/apps/lung-disease-detection/app) |
+| Live web app | GitHub Pages | [web app](https://a1mohamad.github.io/apps/lung-disease-detection/app) |
 | Runtime API | Hugging Face Spaces | [API Space](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api) |
 | Model artifacts | Hugging Face Hub | `HF_MODEL_REPO_ID=a1mohamadd/lung-disease-detection` |
 | Prediction logs | Render PostgreSQL | `DATABASE_URL` with managed Postgres TLS |
 | Generated images | Supabase Storage | `PREDICTION_STORAGE_BACKEND=supabase` |
+| Research lab | GitHub Pages | [research page](https://a1mohamad.github.io/research/lung-disease-detection/index.html) |
 
 Cloud runtime flow:
 
 ```text
-GitHub Pages frontend
+Live web app on GitHub Pages
     |
     v
 Hugging Face Space / FastAPI
@@ -319,8 +324,9 @@ Supported storage backends:
 
 Important note:
 
-- The public frontend is hosted on GitHub Pages at [`/apps/lung-disease-detection/`](https://a1mohamad.github.io/apps/lung-disease-detection/).
-- The app route is available at [`/apps/lung-disease-detection/app`](https://a1mohamad.github.io/apps/lung-disease-detection/app).
+- The public web app is hosted on GitHub Pages at [`/apps/lung-disease-detection/app`](https://a1mohamad.github.io/apps/lung-disease-detection/app).
+- The project landing route is available at [`/apps/lung-disease-detection/`](https://a1mohamad.github.io/apps/lung-disease-detection/).
+- The related research lab is available at [`/research/lung-disease-detection/`](https://a1mohamad.github.io/research/lung-disease-detection/index.html).
 - The repository currently tracks the built bundle, not the original React source project.
 - `frontend/config.js` controls the frontend API base URL and base path behavior.
 
