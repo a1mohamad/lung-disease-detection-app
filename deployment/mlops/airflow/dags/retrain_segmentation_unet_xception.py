@@ -1,3 +1,5 @@
+"""Airflow DAG for retraining the U-Net Xception segmentation model."""
+
 from datetime import datetime
 
 from airflow import DAG
@@ -5,6 +7,8 @@ from airflow.providers.standard.operators.python import PythonOperator
 
 from mlops.config.settings import MLOpsSettings
 
+# Constants are read from settings once during DAG parsing so the Airflow UI
+# exposes the effective defaults for each retraining task.
 TFRECORDS_DIR = str(MLOpsSettings.TFRECORDS_DIR)
 EXPERIMENT = MLOpsSettings.EXPERIMENT
 MODEL_STAGE = MLOpsSettings.MODEL_STAGE
@@ -14,6 +18,8 @@ VAL_RATIO = MLOpsSettings.VAL_RATIO
 MAX_TRAIN_BATCHES = MLOpsSettings.MAX_TRAIN_BATCHES
 MAX_EVAL_BATCHES = MLOpsSettings.MAX_EVAL_BATCHES
 DATASET_MODE = MLOpsSettings.RETRAIN_DATASET_MODE
+# Import after settings so local DAG parsing can fail early on configuration
+# issues before loading heavier TensorFlow task code.
 from mlops.airflow.tasks.retrain import retrain_model
 
 
@@ -24,6 +30,8 @@ with DAG(
     catchup=False,
     tags=["mlflow", "retrain", "segmentation"],
 ) as dag:
+    # Segmentation retraining optimizes mask quality first; downstream
+    # classifiers depend on these masks for ROI crops and visual artifacts.
     PythonOperator(
         task_id="retrain_unet_xception_segmentation",
         python_callable=retrain_model,
