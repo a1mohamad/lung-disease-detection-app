@@ -1,4 +1,6 @@
 services:
+  # Airflow metadata database. This is separate from the application/MLflow SQL
+  # Server database so Airflow can manage its own schema cleanly.
   airflow-db:
     image: postgres:16
     environment:
@@ -15,6 +17,7 @@ services:
     volumes:
       - airflow_pg_data:/var/lib/postgresql/data
 
+  # SQL Server backs MLflow metadata and can also support local prediction logs.
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
@@ -25,6 +28,7 @@ services:
     volumes:
       - mssql_data:/var/opt/mssql
 
+  # Creates required SQL Server databases before MLflow starts.
   db-init:
     image: mcr.microsoft.com/mssql-tools
     depends_on:
@@ -34,6 +38,8 @@ services:
     entrypoint: >
       /bin/bash -c "until /opt/mssql-tools/bin/sqlcmd -S db -U sa -P ${MSSQL_SA_PASSWORD} -i /db/init/create_databases.sql; do sleep 5; done"
 
+  # MLflow tracking server used by evaluation, retraining, registry, and release
+  # workflows. Artifacts are mounted to a local directory for easy inspection.
   mlflow:
     image: lung-mlflow:dev
     build: ./mlops/mlflow
@@ -51,6 +57,8 @@ services:
     volumes:
       - ./mlops/mlflow/artifacts:/mlflow/artifacts
 
+  # Airflow orchestrator for scheduled evaluation/retraining DAGs. The project
+  # root and research directory are mounted so DAG tasks can access code/data.
   airflow:
     image: lung-airflow:dev
     build:
@@ -99,6 +107,8 @@ services:
         condition: service_started
     command: ["airflow", "standalone"]
 
+  # Manual profile used to backfill historical notebook/model information into
+  # MLflow without running it as part of the always-on stack.
   post_hoc_backfill:
     image: lung-airflow:dev
     profiles: ["manual"]
@@ -118,6 +128,7 @@ services:
       bash -c "python /opt/project/mlops/jobs/post_hoc_backfill.py --register-model"
 
 volumes:
+  # Persist SQL Server and Airflow metadata between local container restarts.
   mssql_data:
   airflow_pg_data:
 
