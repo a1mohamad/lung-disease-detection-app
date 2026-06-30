@@ -1,3 +1,5 @@
+"""Kafka consumer that maintains rolling prediction monitoring metrics."""
+
 from __future__ import annotations
 
 from collections import deque
@@ -11,6 +13,12 @@ OUT = Path("runtime/monitoring_metrics.jsonl")
 
 
 def main() -> None:
+    """Consume prediction events and append five-minute window metrics.
+
+    The consumer maintains an in-memory sliding window and writes each updated
+    metric snapshot to JSONL. It is intentionally simple so local deployments can
+    demonstrate monitoring behavior without a metrics backend.
+    """
     if not AppConfig.KAFKA_ENABLED:
         print("KAFKA_ENABLED=false, monitoring consumer stopped.")
         return
@@ -26,9 +34,12 @@ def main() -> None:
 
             now = datetime.now(timezone.utc)
             payload = event["payload"]
+            # Keep only lightweight values in memory; full prediction payloads
+            # remain in the DB/logging path.
             window.append({"at": now, "final_label": payload.get("final_label"), "final_prob": payload.get("final_prob", 0.0)})
 
             cutoff = now - timedelta(minutes=5)
+            # Drop events outside the rolling window before computing rates.
             while window and window[0]["at"] < cutoff:
                 window.popleft()
 
