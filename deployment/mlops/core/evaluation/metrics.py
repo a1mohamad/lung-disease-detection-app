@@ -1,3 +1,5 @@
+"""Task-specific evaluation metric implementations."""
+
 from __future__ import annotations
 
 from typing import Dict, Iterable, Optional
@@ -11,6 +13,16 @@ def eval_binary(
     dataset: tf.data.Dataset,
     max_batches: Optional[int],
 ) -> Dict[str, float]:
+    """Evaluate a binary classifier and return MLflow-friendly metrics.
+
+    Args:
+        model: Keras binary classifier.
+        dataset: Dataset yielding ``(images, labels)`` batches.
+        max_batches: Optional cap for smoke tests or dry runs.
+
+    Returns:
+        Dictionary of validation and generic metric names suitable for MLflow.
+    """
     tp = fp = fn = tn = 0
     auc = tf.keras.metrics.AUC()
     total = 0
@@ -18,6 +30,8 @@ def eval_binary(
     iterable: Iterable = dataset.take(max_batches) if max_batches else dataset
     for images, labels in iterable:
         preds = model(images, training=False)
+        # Support both sigmoid-style single-output binary heads and two-logit
+        # softmax heads so older research artifacts can be evaluated uniformly.
         if preds.shape[-1] == 1:
             probs = tf.squeeze(tf.cast(preds, tf.float32), axis=-1)
         else:
@@ -59,6 +73,17 @@ def eval_multiclass(
     max_batches: Optional[int],
     num_classes: int,
 ) -> Dict[str, float]:
+    """Evaluate a multiclass classifier with macro precision, recall, and F1.
+
+    Args:
+        model: Keras multiclass classifier.
+        dataset: Dataset yielding ``(images, one_hot_labels)`` batches.
+        max_batches: Optional cap for smoke tests or dry runs.
+        num_classes: Number of disease classes represented by the model.
+
+    Returns:
+        Dictionary containing accuracy and macro precision/recall/F1 metrics.
+    """
     conf = tf.zeros((num_classes, num_classes), dtype=tf.int32)
     total = 0
 
@@ -70,6 +95,8 @@ def eval_multiclass(
         conf += tf.math.confusion_matrix(y_true, y_pred, num_classes=num_classes, dtype=tf.int32)
         total += int(labels.shape[0])
 
+    # Build macro metrics from the confusion matrix so every class contributes
+    # equally, which is important for imbalanced medical classes.
     conf_f = tf.cast(conf, tf.float32)
     tp = tf.linalg.diag_part(conf_f)
     fp = tf.reduce_sum(conf_f, axis=0) - tp
@@ -102,6 +129,16 @@ def eval_segmentation(
     dataset: tf.data.Dataset,
     max_batches: Optional[int],
 ) -> Dict[str, float]:
+    """Evaluate a segmentation model with Dice and IoU metrics.
+
+    Args:
+        model: Keras segmentation model.
+        dataset: Dataset yielding ``(images, masks)`` batches.
+        max_batches: Optional cap for smoke tests or dry runs.
+
+    Returns:
+        Dictionary containing validation Dice and IoU metrics for MLflow.
+    """
     dice_scores = []
     iou_scores = []
     total = 0
