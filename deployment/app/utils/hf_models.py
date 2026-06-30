@@ -1,3 +1,5 @@
+"""Hugging Face Hub model artifact download helpers."""
+
 from __future__ import annotations
 
 import logging
@@ -21,13 +23,37 @@ REQUIRED_MODEL_DIRS = (
 
 
 def ensure_models_available_from_huggingface() -> None:
+    """Download model artifacts only when the feature flag is enabled.
+
+    This startup hook lets cloud deployments ship a small image and fetch model
+    artifacts at boot, while local development can keep using mounted
+    ``saved_models`` directories.
+    """
     if not AppConfig.HF_MODEL_DOWNLOAD_ENABLED:
+        # Local and CI environments generally mount artifacts directly, so the
+        # Hub client is imported only when download mode is explicitly enabled.
         return
     download_models_from_huggingface(skip_if_ready=True)
 
 
 def download_models_from_huggingface(*, skip_if_ready: bool = True) -> None:
+    """Download required model artifacts from the configured Hugging Face repo.
+
+    The download is limited to the model subtrees needed by the inference API.
+    After the snapshot completes, local artifacts are revalidated against their
+    metadata so a partial or misconfigured Hub repository fails loudly.
+
+    Args:
+        skip_if_ready: When true, skip the network download if all local model
+            directories already contain valid metadata and model files.
+
+    Raises:
+        ArtifactError: If the Hub client is unavailable or the downloaded
+        snapshot does not contain the required artifacts.
+    """
     if _local_models_ready():
+        # Readiness checks validate metadata and runtime artifact paths, not just
+        # the existence of top-level model directories.
         if not skip_if_ready:
             logger.info("Local model artifacts already exist; refreshing from Hugging Face.")
         else:
@@ -42,6 +68,8 @@ def download_models_from_huggingface(*, skip_if_ready: bool = True) -> None:
             "HF_MODEL_DOWNLOAD_ENABLED=true but huggingface_hub is not installed.",
         ) from exc
 
+    # Scope the snapshot to deployable model folders so large research files do
+    # not inflate startup time or container disk usage.
     allow_patterns = _allow_patterns()
     logger.info(
         "Downloading model artifacts from Hugging Face. repo_id=%s revision=%s subdir=%s",
@@ -73,7 +101,15 @@ def download_models_from_huggingface(*, skip_if_ready: bool = True) -> None:
 
 
 def _local_models_ready() -> bool:
+    """Return whether all required model directories contain expected artifacts.
+
+    Returns:
+        True when every required model directory has readable metadata and the
+        runtime-specific artifact exists.
+    """
     for model_dir in REQUIRED_MODEL_DIRS:
+        # Metadata is the source of truth for artifact names because Keras and
+        # ONNX runtimes use different file extensions and fallback behavior.
         metadata_path = model_dir / "metadata.yaml"
         if not metadata_path.exists():
             return False
@@ -88,8 +124,19 @@ def _local_models_ready() -> bool:
 
 
 def _required_model_rel_path(metadata: dict) -> str | None:
+    """Return the runtime-specific model artifact path from metadata.
+
+    Args:
+        metadata: Parsed model metadata.
+
+    Returns:
+        Relative artifact path for the configured runtime, or ``None`` when the
+        metadata cannot identify one.
+    """
     model_cfg = metadata.get("model", {})
     if AppConfig.MODEL_RUNTIME == "onnx":
+        # ONNX deployments prefer explicit metadata but can infer the converted
+        # filename from a Keras artifact when older metadata lacks onnx_path.
         onnx_rel_path = model_cfg.get("onnx_path")
         if onnx_rel_path:
             return onnx_rel_path
@@ -101,6 +148,11 @@ def _required_model_rel_path(metadata: dict) -> str | None:
 
 
 def _allow_patterns() -> list[str]:
+    """Restrict Hub downloads to model artifact subtrees.
+
+    Returns:
+        Hugging Face ``allow_patterns`` list scoped to deployable model folders.
+    """
     roots = ["healthy_unhealthy/**", "diseases/**", "segmentation/**"]
     if not AppConfig.HF_MODEL_REPO_SUBDIR:
         return roots
@@ -108,6 +160,11 @@ def _allow_patterns() -> list[str]:
 
 
 def _download_target_dir() -> Path:
+    """Return the local directory that should receive the Hub snapshot.
+
+    Returns:
+        Directory path passed to ``snapshot_download``.
+    """
     if AppConfig.HF_MODEL_REPO_SUBDIR:
         return AppConfig.MODELS_ROOT.parent
     return AppConfig.MODELS_ROOT
