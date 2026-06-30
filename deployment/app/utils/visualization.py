@@ -1,3 +1,5 @@
+"""Visualization helpers for masks, overlays, and probability plots."""
+
 import numpy as np
 from PIL import Image
 
@@ -9,11 +11,23 @@ def overlay_mask_on_image(
     alpha: float = 0.4,
     thresh: float = 0.5,
 ) -> Image.Image:
+    """Create an RGBA image with the binary mask overlaid in red.
+
+    Args:
+        original_img: Source RGB image array.
+        mask: Predicted lung mask.
+        alpha: Overlay opacity.
+        thresh: Threshold used to binarize the mask.
+
+    Returns:
+        Pillow RGBA image containing the source image plus red mask overlay.
+    """
     base = Image.fromarray(original_img.astype("uint8")).convert("RGBA")
 
     mask_2d = np.squeeze(mask)
     mask_bin = (mask_2d >= thresh).astype("uint8") * 255
 
+    # Nearest-neighbor resizing preserves hard mask edges for human review.
     mask_l = Image.fromarray(mask_bin, mode="L").resize(base.size, Image.NEAREST)
 
     red = Image.new("RGBA", base.size, (255, 0, 0, int(255 * alpha)))
@@ -27,6 +41,12 @@ def plot_prediction_bars(
     probs_by_label: dict,
     title: str = "Prediction Probabilities",
 ) -> None:
+    """Display a simple probability bar chart for local/manual runs.
+
+    Args:
+        probs_by_label: Mapping from label name to probability.
+        title: Figure title.
+    """
     import matplotlib.pyplot as plt
 
     labels = list(probs_by_label.keys())
@@ -42,6 +62,13 @@ def plot_prediction_bars(
     plt.show()
 
 def visualization(img, roi_img, mask) -> None:
+    """Display source image, ROI crop, and predicted mask side by side.
+
+    Args:
+        img: Source image batch or image array.
+        roi_img: Cropped lung ROI image.
+        mask: Predicted lung mask.
+    """
     import matplotlib.pyplot as plt
 
     fig, axs = plt.subplots(1, 3, figsize=(18, 5))
