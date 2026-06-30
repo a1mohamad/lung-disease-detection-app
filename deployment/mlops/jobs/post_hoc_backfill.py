@@ -1,3 +1,5 @@
+"""CLI job for backfilling existing research artifacts into MLflow."""
+
 from __future__ import annotations
 
 import argparse
@@ -34,6 +36,23 @@ def run_for_model(
     register_model: bool,
     with_eval: bool,
 ) -> None:
+    """Log notebooks, metadata, optional evaluation, and optional registration.
+
+    Args:
+        spec: Managed model specification.
+        post_hoc_spec: Research artifact specification for the same model.
+        tfrecords_dir: Optional validation TFRecord directory.
+        batch_size: Evaluation batch size when ``with_eval`` is true.
+        max_eval_batches: Optional evaluation cap.
+        stage: MLflow stage/alias or local fallback stage.
+        experiment: MLflow experiment name.
+        val_ratio: Legacy validation split ratio.
+        register_model: Whether to register the loaded model in MLflow.
+        with_eval: Whether to evaluate the model during backfill.
+
+    Raises:
+        RuntimeError: If evaluation is requested without TFRecords.
+    """
     mlflow.set_experiment(experiment)
     metadata = load_yaml(spec.metadata_path)
 
@@ -58,6 +77,8 @@ def run_for_model(
             )
 
         mlflow.log_artifact(str(spec.metadata_path), artifact_path="metadata")
+        # Backfill runs preserve historical context: notebooks, Optuna outputs,
+        # support files, and metadata all travel with the MLflow run.
         for optuna_path in post_hoc_spec.optuna_jsons:
             if optuna_path.exists():
                 mlflow.log_artifact(str(optuna_path), artifact_path="optuna")
@@ -111,6 +132,11 @@ def run_for_model(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for post-hoc MLflow backfill.
+
+    Returns:
+        Parsed command-line namespace.
+    """
     parser = argparse.ArgumentParser(description="One-time post-hoc backfill to MLflow.")
     parser.add_argument("--tfrecords-dir", type=str, default="")
     parser.add_argument("--batch-size", type=int, default=MLOpsSettings.BATCH_SIZE)
@@ -136,6 +162,22 @@ def run_pipeline(
     with_eval: bool,
     model_name: str | None = None,
 ) -> None:
+    """Run post-hoc backfill for all known models or one selected model.
+
+    Args:
+        tfrecords_dir: Optional TFRecord directory for evaluation.
+        batch_size: Evaluation batch size.
+        max_eval_batches: Optional evaluation cap.
+        experiment: MLflow experiment name.
+        stage: MLflow stage/alias or local fallback stage.
+        val_ratio: Legacy validation split ratio.
+        register_model: Whether to register the model in MLflow.
+        with_eval: Whether to evaluate during backfill.
+        model_name: Optional model short name.
+
+    Raises:
+        ValueError: If the selected model does not have matching specs.
+    """
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
     tfrecords_dir_path = Path(tfrecords_dir) if tfrecords_dir else None
 
@@ -163,6 +205,11 @@ def run_pipeline(
 
 
 def main() -> None:
+    """Execute the post-hoc backfill CLI.
+
+    Converts CLI defaults into the programmatic ``run_pipeline`` call used by
+    local commands and manual Compose profiles.
+    """
     args = parse_args()
     max_eval_batches = args.max_eval_batches or None
     tfrecords_dir = args.tfrecords_dir or str(MLOpsSettings.TFRECORDS_DIR)
