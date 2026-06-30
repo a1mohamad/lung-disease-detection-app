@@ -1,3 +1,5 @@
+"""Reviewed-data manifest schema validation."""
+
 from __future__ import annotations
 
 import hashlib
@@ -16,6 +18,18 @@ ALLOWED_CLASSES = {
 
 
 def parse_timestamp(value: str, field_name: str) -> datetime:
+    """Parse an ISO-8601 timestamp and normalize it to UTC.
+
+    Args:
+        value: Timestamp string from a reviewed-data manifest.
+        field_name: Field name used in validation error messages.
+
+    Returns:
+        Timezone-aware UTC datetime.
+
+    Raises:
+        ValueError: If the timestamp is missing or invalid.
+    """
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except (TypeError, ValueError) as exc:
@@ -27,6 +41,20 @@ def parse_timestamp(value: str, field_name: str) -> datetime:
 
 @dataclass(frozen=True)
 class ReviewedRecord:
+    """One reviewed image and mask pair described by a manifest.
+
+    Attributes:
+        sample_id: Stable unique sample id.
+        patient_id: Patient-level grouping key used for leakage-safe splits.
+        image_key: Storage key for the reviewed image object.
+        mask_key: Storage key for the reviewed mask object.
+        class_name: One of the supported source dataset classes.
+        reviewed_at: UTC timestamp when review was completed.
+        image_sha256: Optional checksum for the image object.
+        mask_sha256: Optional checksum for the mask object.
+        source_id: Manifest key or source path used for audit errors.
+    """
+
     sample_id: str
     patient_id: str
     image_key: str
@@ -40,6 +68,17 @@ class ReviewedRecord:
 
 @dataclass(frozen=True)
 class ReviewedBatch:
+    """Validated reviewed-data manifest batch.
+
+    Attributes:
+        batch_id: Human-readable batch identifier.
+        period_start: Inclusive batch period start.
+        period_end: Exclusive batch period end.
+        records: Validated reviewed records.
+        source_id: Manifest location used for auditability.
+        digest: SHA-256 digest of the raw manifest bytes.
+    """
+
     batch_id: str
     period_start: datetime
     period_end: datetime
@@ -49,11 +88,26 @@ class ReviewedBatch:
 
 
 def load_reviewed_batch(raw: bytes, *, source_id: str) -> ReviewedBatch:
+    """Validate raw manifest bytes and return a reviewed batch object.
+
+    Args:
+        raw: Raw JSON manifest bytes.
+        source_id: Manifest key or path used in validation errors.
+
+    Returns:
+        Fully validated reviewed-data batch.
+
+    Raises:
+        ValueError: If the schema version, period, records, labels, checksums,
+        or object keys are invalid.
+    """
     try:
         payload = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ValueError(f"Invalid reviewed-data manifest: {source_id}") from exc
 
+    # Explicit schema versioning lets future manifest formats coexist without
+    # silently changing retraining behavior.
     if payload.get("schema_version") != "1.0":
         raise ValueError(f"Unsupported manifest schema_version in {source_id}.")
 
@@ -83,6 +137,8 @@ def load_reviewed_batch(raw: bytes, *, source_id: str) -> ReviewedBatch:
             raise ValueError(
                 f"Duplicate sample_id '{record.sample_id}' in {source_id}."
             )
+        # Batch windows are half-open so adjacent monthly batches cannot overlap
+        # on a record reviewed exactly at the boundary.
         if not period_start <= record.reviewed_at < period_end:
             raise ValueError(
                 f"records[{index}].reviewed_at must fall within the batch period "
@@ -107,6 +163,20 @@ def _load_record(
     source_id: str,
     index: int,
 ) -> ReviewedRecord:
+    """Validate and convert one manifest record.
+
+    Args:
+        item: Raw record dictionary from the manifest.
+        source_id: Manifest source identifier.
+        index: Position of the record inside the manifest.
+
+    Returns:
+        Validated ``ReviewedRecord`` instance.
+
+    Raises:
+        ValueError: If required fields, labels, storage keys, or checksums are
+        invalid.
+    """
     prefix = f"records[{index}]"
     class_name = _required_text(item, "class_name", source_id, prefix)
     if class_name not in ALLOWED_CLASSES:
@@ -147,6 +217,20 @@ def _required_text(
     source_id: str,
     prefix: str = "",
 ) -> str:
+    """Read and validate a required non-empty text field.
+
+    Args:
+        payload: Manifest object or record dictionary.
+        key: Field name to read.
+        source_id: Manifest source identifier.
+        prefix: Optional nested record prefix for error messages.
+
+    Returns:
+        Trimmed string value.
+
+    Raises:
+        ValueError: If the value is missing, non-text, or empty.
+    """
     value = payload.get(key)
     label = f"{prefix}.{key}" if prefix else key
     if not isinstance(value, str) or not value.strip():
@@ -155,6 +239,19 @@ def _required_text(
 
 
 def _safe_key(value: str, prefix: str, source_id: str) -> str:
+    """Normalize and validate a storage key against traversal.
+
+    Args:
+        value: Raw object key from the manifest.
+        prefix: Record prefix used in validation messages.
+        source_id: Manifest source identifier.
+
+    Returns:
+        Normalized forward-slash object key.
+
+    Raises:
+        ValueError: If the key is empty or attempts path traversal.
+    """
     normalized = value.replace("\\", "/").strip("/")
     if not normalized or ".." in normalized.split("/"):
         raise ValueError(f"{prefix} contains an unsafe object key in {source_id}.")
@@ -162,6 +259,19 @@ def _safe_key(value: str, prefix: str, source_id: str) -> str:
 
 
 def _optional_sha256(value: Any, prefix: str, source_id: str) -> str | None:
+    """Validate an optional SHA-256 checksum field.
+
+    Args:
+        value: Raw checksum value.
+        prefix: Record prefix used in validation messages.
+        source_id: Manifest source identifier.
+
+    Returns:
+        Lowercase checksum string, or ``None`` when omitted.
+
+    Raises:
+        ValueError: If the checksum is present but not a valid SHA-256 digest.
+    """
     if value in (None, ""):
         return None
     if not isinstance(value, str):
