@@ -1,3 +1,5 @@
+"""Kafka consumer that builds a doctor-review image queue."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,6 +11,11 @@ OUT = Path("runtime/doctor_queue.jsonl")
 
 
 def main() -> None:
+    """Consume prediction events and append review-ready artifact links.
+
+    The review queue focuses on image artifacts and labels, not model internals.
+    That makes it a clean handoff for a future clinician-facing workflow.
+    """
     if not AppConfig.KAFKA_ENABLED:
         print("KAFKA_ENABLED=false, doctor-images consumer stopped.")
         return
@@ -22,6 +29,8 @@ def main() -> None:
                 continue
 
             payload = event["payload"]
+            # Store both URLs and storage paths: URLs help human review, while
+            # paths remain stable after signed URLs expire.
             out = {
                 "request_id": event.get("request_id"),
                 "occurred_at": event.get("occurred_at"),
