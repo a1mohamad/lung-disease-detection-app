@@ -1,3 +1,5 @@
+"""Airflow task wrapper for per-model retraining jobs."""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -18,11 +20,29 @@ def retrain_model(
     dataset_mode: str = "legacy",
     **context,
 ) -> None:
+    """Run retraining for one model, honoring DAG-trigger configuration.
+
+    Args:
+        model_name: Managed model short name.
+        tfrecords_dir: Default TFRecord directory from the DAG.
+        batch_size: Training batch size.
+        epochs: Number of retraining epochs.
+        max_train_batches: Optional training cap for smoke tests.
+        max_eval_batches: Optional evaluation cap for smoke tests.
+        experiment: MLflow experiment name.
+        stage: Starting model stage/alias.
+        val_ratio: Legacy validation split ratio.
+        register_model: Whether to register/promotion-check the candidate.
+        dataset_mode: ``legacy`` or ``prepared``.
+        **context: Airflow context, including optional ``dag_run.conf``.
+    """
     # Lazy import prevents heavy ML modules from loading at DAG parse time.
     from mlops.jobs.monthly_retrain import run_pipeline
 
     dag_run = context.get("dag_run")
     dag_conf = getattr(dag_run, "conf", {}) or {}
+    # DAG trigger config can override dataset location/mode for controlled
+    # backfills without editing the DAG source.
     run_pipeline(
         tfrecords_dir=dag_conf.get("tfrecords_dir", tfrecords_dir),
         batch_size=batch_size,
