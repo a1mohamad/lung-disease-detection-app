@@ -1,3 +1,5 @@
+"""Extract notebook and Optuna metadata for MLflow backfill runs."""
+
 from __future__ import annotations
 
 import ast
@@ -38,6 +40,15 @@ BIN_OPS = {
 
 
 def _is_nullish(value: object) -> bool:
+    """Return whether a value should be omitted from logged parameters.
+
+    Args:
+        value: Candidate notebook or Optuna parameter value.
+
+    Returns:
+        True for empty, null-like, or missing values that would add noise to
+        MLflow parameters.
+    """
     if value is None:
         return True
     if isinstance(value, str) and value.strip().lower() in {"", "none", "null", "nan"}:
@@ -46,6 +57,15 @@ def _is_nullish(value: object) -> bool:
 
 
 def _flatten_dict(data: dict, prefix: str = "") -> dict[str, str]:
+    """Flatten nested dictionaries into dot-separated string parameters.
+
+    Args:
+        data: Nested mapping loaded from an Optuna JSON artifact.
+        prefix: Prefix applied to every emitted key.
+
+    Returns:
+        Flat string mapping suitable for ``mlflow.log_params``.
+    """
     flat: dict[str, str] = {}
     for key, value in data.items():
         new_key = f"{prefix}.{key}" if prefix else str(key)
@@ -59,6 +79,16 @@ def _flatten_dict(data: dict, prefix: str = "") -> dict[str, str]:
 
 
 def _try_eval_expr(node: ast.AST, env: dict[str, object]) -> object:
+    """Safely evaluate literal-like AST expressions used in notebooks.
+
+    Args:
+        node: AST expression node from a notebook code cell.
+        env: Previously evaluated simple assignments in the same notebook.
+
+    Returns:
+        Evaluated literal-like value, or ``None`` when the expression is too
+        dynamic to evaluate safely.
+    """
     if isinstance(node, ast.Constant):
         return node.value
     if isinstance(node, ast.Name):
@@ -87,6 +117,14 @@ def _try_eval_expr(node: ast.AST, env: dict[str, object]) -> object:
 
 
 def _serialize_notebook_value(value: object) -> str:
+    """Serialize a notebook parameter value for MLflow logging.
+
+    Args:
+        value: Notebook assignment value extracted from a code cell.
+
+    Returns:
+        String representation accepted by MLflow parameter logging.
+    """
     if isinstance(value, str):
         return value
     if isinstance(value, (list, tuple, dict)):
@@ -95,6 +133,15 @@ def _serialize_notebook_value(value: object) -> str:
 
 
 def _allow_notebook_key(key: str) -> bool:
+    """Return whether an uppercase notebook variable should be logged.
+
+    Args:
+        key: Uppercase variable name extracted from a notebook.
+
+    Returns:
+        True when the variable looks like a training hyperparameter or known
+        research setting worth preserving in MLflow.
+    """
     if key.endswith("_DIR"):
         return False
     if key in NOTEBOOK_PARAM_ALLOWLIST:
@@ -107,6 +154,14 @@ def _allow_notebook_key(key: str) -> bool:
 
 
 def extract_uppercase_params(notebook_path: Path) -> dict[str, str]:
+    """Extract uppercase assignment parameters from notebook code cells.
+
+    Args:
+        notebook_path: Notebook file to inspect.
+
+    Returns:
+        Mapping of uppercase notebook variable names to serialized values.
+    """
     if not notebook_path.exists():
         return {}
     data = json.loads(notebook_path.read_text(encoding="utf-8"))
@@ -117,6 +172,8 @@ def extract_uppercase_params(notebook_path: Path) -> dict[str, str]:
             continue
         code = "".join(cell.get("source", []))
         try:
+            # Notebook cells can contain exploratory or partially invalid code;
+            # skip cells that cannot be parsed instead of failing the backfill.
             tree = ast.parse(code)
         except Exception:
             continue
@@ -136,6 +193,15 @@ def extract_uppercase_params(notebook_path: Path) -> dict[str, str]:
 
 
 def collect_notebook_params(notebooks: list[Path]) -> dict[str, str]:
+    """Collect allowed notebook parameters across existing notebooks.
+
+    Args:
+        notebooks: Notebook paths associated with one model.
+
+    Returns:
+        MLflow-ready parameter dictionary with notebook names and selected
+        uppercase configuration values.
+    """
     existing = [nb for nb in notebooks if nb.exists()]
     if not existing:
         return {}
@@ -154,6 +220,14 @@ def collect_notebook_params(notebooks: list[Path]) -> dict[str, str]:
 
 
 def collect_notebook_support_files(notebooks: list[Path]) -> list[Path]:
+    """Find colocated utility files that should be logged with notebooks.
+
+    Args:
+        notebooks: Notebook paths associated with one model.
+
+    Returns:
+        Deduplicated list of nearby ``utils.py`` files.
+    """
     files: list[Path] = []
     seen: set[Path] = set()
     for nb in notebooks:
@@ -169,6 +243,15 @@ def collect_notebook_support_files(notebooks: list[Path]) -> list[Path]:
 
 
 def load_optuna_params(paths: list[Path]) -> dict[str, str]:
+    """Load selected Optuna result fields from JSON artifacts.
+
+    Args:
+        paths: Optuna summary JSON paths.
+
+    Returns:
+        MLflow-ready parameter dictionary containing selected Optuna settings
+        and best-trial metadata.
+    """
     params: dict[str, str] = {}
     for path in paths:
         if not path.exists():
