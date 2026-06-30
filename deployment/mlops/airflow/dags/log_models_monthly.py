@@ -1,3 +1,5 @@
+"""Airflow DAG for scheduled monthly model evaluation logging."""
+
 from datetime import datetime
 
 from airflow import DAG
@@ -6,6 +8,8 @@ from airflow.providers.standard.operators.python import PythonOperator
 from mlops.config.settings import MLOpsSettings
 from mlops.airflow.tasks.logging import log_model_results
 
+# Resolve settings at DAG-parse time so the Airflow UI shows the same defaults
+# that scheduled tasks will use unless overridden by environment variables.
 TFRECORDS_DIR = str(MLOpsSettings.TFRECORDS_DIR)
 EXPERIMENT = MLOpsSettings.EXPERIMENT
 MODEL_STAGE = MLOpsSettings.MODEL_STAGE
@@ -16,6 +20,8 @@ MAX_TRAIN_BATCHES = MLOpsSettings.MAX_TRAIN_BATCHES
 MAX_EVAL_BATCHES = MLOpsSettings.MAX_EVAL_BATCHES
 
 
+# This DAG is intentionally evaluation-only: it refreshes MLflow metrics for
+# deployed artifacts without retraining or publishing new model versions.
 with DAG(
     dag_id="log_models_monthly",
     start_date=datetime(2026, 2, 1),
@@ -23,6 +29,8 @@ with DAG(
     catchup=False,
     tags=["mlflow", "logging", "evaluation"],
 ) as dag:
+    # Segmentation is logged separately from classifiers because it reports mask
+    # overlap metrics instead of class probabilities.
     PythonOperator(
         task_id="log_unet_xception_segmentation",
         python_callable=log_model_results,
@@ -37,6 +45,8 @@ with DAG(
         },
     )
 
+    # Binary ensemble members are logged as independent MLflow runs so later
+    # monitoring can compare drift and calibration per architecture.
     PythonOperator(
         task_id="log_densenet_binary",
         python_callable=log_model_results,
@@ -93,6 +103,8 @@ with DAG(
         },
     )
 
+    # The disease subtype model is evaluated on the filtered unhealthy subset,
+    # which is handled inside the shared logging task by model specification.
     PythonOperator(
         task_id="log_densenet_diseases",
         python_callable=log_model_results,
