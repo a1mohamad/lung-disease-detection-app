@@ -1,3 +1,5 @@
+"""Input source selection and raw image byte conversion helpers."""
+
 from __future__ import annotations
 
 from app.preprocessing.image import load_bytes_from_source
@@ -16,6 +18,25 @@ def _select_image_source(
     image_base64: Optional[str],
     upload_file: Optional[IO[bytes]],
 ) -> Tuple[Union[str, IO[bytes], bytes], Optional[bytes]]:
+    """Resolve the single image source accepted by one prediction request.
+
+    Args:
+        image_path: Local filesystem path supplied through JSON.
+        image_url: Remote image URL supplied through JSON.
+        image_base64: Base64-encoded image body supplied through JSON.
+        upload_file: Multipart upload stream supplied by FastAPI.
+
+    Returns:
+        A tuple containing the original source identifier and decoded raw image
+        bytes. Base64 inputs use the bytes as their source identifier because
+        there is no stable external path to report.
+
+    Raises:
+        InputError: If no source is provided, multiple sources are provided, or
+        the selected source cannot be loaded.
+    """
+    # Exactly one source keeps request semantics auditable and prevents subtle
+    # precedence bugs when callers accidentally send two image fields.
     provided = [
         v is not None and v != ""
         for v in (image_path, image_url, image_base64, upload_file)
@@ -59,5 +80,13 @@ def _select_image_source(
     raise InputError("INVALID_INPUT", "No valid input found")
     
 def _bytes_to_np(data: bytes) -> np.ndarray:
+    """Decode raw image bytes into an RGB NumPy array for artifact generation.
+
+    Args:
+        data: Encoded image bytes loaded from the selected request source.
+
+    Returns:
+        RGB NumPy array used when saving source and overlay artifacts.
+    """
     img = Image.open(BytesIO(data)).convert("RGB")
     return np.array(img)
