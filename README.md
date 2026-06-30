@@ -675,4 +675,6 @@ This project demonstrates:
 
 ## License
 
-This project includes an MIT-style `LICENSE` file. Review model and dataset licenses separately before publishing artifacts or using the system beyond educational and portfolio contexts.
+This project is licensed under the MIT License.
+
+See the [LICENSE](LICENSE) file for details.
