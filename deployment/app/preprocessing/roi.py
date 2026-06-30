@@ -1,3 +1,5 @@
+"""Region-of-interest cropping based on predicted lung masks."""
+
 import numpy as np
 from PIL import Image
 
@@ -11,25 +13,31 @@ def crop_lung_roi(
     threshold: float = 0.5,
     margin_ratio: float = 0.1,
 ) -> np.ndarray:
-    """
-    Crop lung region using a binary segmentation mask and resize.
+    """Crop the lung region from an image using a predicted segmentation mask.
 
     Args:
-        img: np.ndarray, shape (1, H, W, 3) or (H, W, 3)
-        mask: np.ndarray, shape (H, W), (H, W, 1), or (1, H, W, 1)
-        target_size: tuple (H, W)
-        threshold: float, binarization threshold for mask
-        margin_ratio: float, extra margin around lung bbox
+        img: Image array with shape ``(1, H, W, 3)`` or ``(H, W, 3)``.
+        mask: Mask array with shape ``(H, W)``, ``(H, W, 1)``, or
+            ``(1, H, W, 1)``.
+        target_size: Output size in ``(height, width)`` order.
+        threshold: Probability threshold used to binarize the mask.
+        margin_ratio: Fractional margin added around the detected lung box.
 
     Returns:
-        np.ndarray: Cropped and resized image, shape (target_H, target_W, 3)
+        Cropped and resized float32 ROI image with shape
+        ``(target_height, target_width, 3)``.
+
+    Notes:
+        If the mask is empty, the full image is resized. This keeps downstream
+        classifiers operational while making the segmentation failure visible
+        through the saved mask artifact.
     """
 
-    # --- Ensure proper shapes using transforms ---
     img = ensure_batch(img).astype(np.float32)       # shape: (1, H, W, C)
     mask_rgb = binary_mask_to_rgb_batch(mask)  # (1, H, W, 3)
 
-    # --- Binarize mask ---
+    # The bounding box is computed on the first mask channel after batching so
+    # callers can pass either raw 2D masks or RGB-expanded masks.
     mask_2d = mask_rgb[0, :, :, 0] > threshold  # drop batch for indexing
     indices = np.argwhere(mask_2d)
 
@@ -50,12 +58,23 @@ def crop_lung_roi(
         x_end = min(img_w, int(x_max) + margin_x)
         cropped = img[0, y_start:y_end, x_start:x_end, :]
     else:
+        # Empty masks can happen with low-confidence segmentation. Falling back
+        # to the full image avoids hiding the event behind a preprocessing crash.
         cropped = img[0]
 
     return _resize_float_image(cropped, target_size)
 
 
 def _resize_float_image(img: np.ndarray, target_size: tuple) -> np.ndarray:
+    """Resize a float image through PIL while preserving float32 output.
+
+    Args:
+        img: Float image array in ``[0, 255]`` scale.
+        target_size: Output size in ``(height, width)`` order.
+
+    Returns:
+        Resized float32 RGB image.
+    """
     pil_img = Image.fromarray(np.clip(img, 0, 255).astype("uint8"))
     # PIL expects (width, height), while model metadata uses (height, width).
     resized = pil_img.resize((int(target_size[1]), int(target_size[0])), Image.BILINEAR)
