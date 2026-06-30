@@ -19,7 +19,7 @@
 
 **Live App and Deployed Services**
 
-[![Live Web App](https://img.shields.io/badge/Live%20Web%20App-GitHub%20Pages-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/apps/lung-disease-detection/app)
+[![Live Web App](https://img.shields.io/badge/Live%20Web%20App-GitHub%20Pages-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/apps/lung-disease-detection/)
 [![Hugging Face Space](https://img.shields.io/badge/Hugging%20Face-Live%20API%20Space-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api)
 [![HF Model Hub](https://img.shields.io/badge/Hugging%20Face-Model%20Artifacts-FF9D00?logo=huggingface&logoColor=black)](https://huggingface.co/a1mohamadd/lung-disease-detection)
 [![Render PostgreSQL](https://img.shields.io/badge/Render-Managed%20PostgreSQL-46E3B7?logo=render&logoColor=black)](https://render.com/docs/databases)
