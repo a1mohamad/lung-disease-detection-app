@@ -1,3 +1,5 @@
+"""Keras model loading from MLflow registry or local artifacts."""
+
 from __future__ import annotations
 
 import logging
@@ -13,6 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 def _load_from_registry(model_name: str, custom_objects: Optional[dict[str, Any]] = None):
+    """Load a Keras model from MLflow using the most stable URI available.
+
+    MLflow installations vary by version and registry conventions. The loader
+    first tries alias URIs, then legacy stage URIs, and finally the latest
+    registered version. This gives production deployments a deterministic
+    preference order while still supporting older local registries.
+    """
     import mlflow
 
     mlflow.set_tracking_uri(AppConfig.MLFLOW_TRACKING_URI)
@@ -43,6 +52,20 @@ def load_keras_model(
     model_name: str,
     custom_objects: Optional[dict[str, Any]] = None,
 ):
+    """Load a Keras model from MLflow when enabled, otherwise from disk.
+
+    Args:
+        model_dir: Directory containing the local model artifact.
+        model_rel_path: Relative model path declared in metadata.
+        model_name: MLflow registered model name.
+        custom_objects: Optional Keras custom objects required by the model.
+
+    Returns:
+        Loaded Keras model instance.
+
+    Raises:
+        ModelError: If MLflow strict mode is enabled and registry loading fails.
+    """
     local_model_path = str(model_dir / model_rel_path)
     alias_uri = f"models:/{model_name}@{AppConfig.MLFLOW_MODEL_STAGE.strip().lower()}"
     stage_uri = f"models:/{model_name}/{AppConfig.MLFLOW_MODEL_STAGE}"
