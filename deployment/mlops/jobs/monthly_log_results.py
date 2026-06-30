@@ -1,3 +1,5 @@
+"""CLI job for monthly model evaluation and MLflow logging."""
+
 from __future__ import annotations
 
 import argparse
@@ -28,6 +30,20 @@ def log_results_for_model(
     experiment: str,
     val_ratio: float,
 ) -> None:
+    """Evaluate one model spec and log metrics, metadata, and summary to MLflow.
+
+    Args:
+        spec: Model specification to evaluate.
+        tfrecords_dir: Directory containing legacy validation TFRecords.
+        batch_size: Evaluation batch size.
+        max_eval_batches: Optional cap for smoke tests or faster CI runs.
+        stage: MLflow stage/alias or local fallback stage.
+        experiment: MLflow experiment name.
+        val_ratio: Legacy shard split ratio used to select validation files.
+
+    Raises:
+        RuntimeError: If no validation TFRecords are available.
+    """
     mlflow.set_experiment(experiment)
     metadata = load_yaml(spec.metadata_path)
     client = MlflowClient()
@@ -40,6 +56,8 @@ def log_results_for_model(
             "val_ratio": val_ratio,
         }
         experiment_id = run.info.experiment_id if run else None
+        # MLflow dataset tracking is optional across MLflow versions. When the
+        # helper cannot create an id, the run still logs normal metrics/artifacts.
         dataset_id = (
             get_or_create_eval_dataset(
                 client=client,
@@ -111,6 +129,11 @@ def log_results_for_model(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for monthly evaluation.
+
+    Returns:
+        Parsed command-line namespace.
+    """
     parser = argparse.ArgumentParser(description="Monthly logging of model results.")
     parser.add_argument("--tfrecords-dir", type=str, default=str(MLOpsSettings.TFRECORDS_DIR))
     parser.add_argument("--batch-size", type=int, default=MLOpsSettings.BATCH_SIZE)
@@ -131,6 +154,17 @@ def run_pipeline(
     model_name: str | None = None,
     val_ratio: float = 0.2,
 ) -> None:
+    """Run monthly evaluation for all models or one selected model.
+
+    Args:
+        tfrecords_dir: Directory containing TFRecord shards.
+        batch_size: Evaluation batch size.
+        max_eval_batches: Optional evaluation cap.
+        experiment: MLflow experiment name.
+        stage: MLflow stage/alias to load.
+        model_name: Optional model short name. When omitted, all specs run.
+        val_ratio: Legacy validation split ratio.
+    """
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
     tfrecords_dir_path = Path(tfrecords_dir)
 
@@ -149,6 +183,11 @@ def run_pipeline(
 
 
 def main() -> None:
+    """Execute the monthly evaluation CLI.
+
+    Parses command-line flags, normalizes ``0`` batch caps to ``None``, and
+    delegates to ``run_pipeline``.
+    """
     args = parse_args()
     max_eval_batches = args.max_eval_batches or None
     run_pipeline(
