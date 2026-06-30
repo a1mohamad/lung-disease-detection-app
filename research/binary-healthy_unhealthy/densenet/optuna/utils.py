@@ -34,6 +34,11 @@ def seed_everthing(SEED=28):
 
 
 def gpu_growth():
+    """Enable TensorFlow GPU memory growth for notebook experiments.
+
+    This keeps TensorFlow from pre-allocating all GPU memory, which is useful
+    when running repeated Optuna trials or inspecting data in the same session.
+    """
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         try:
@@ -132,12 +137,23 @@ def make_parse_fn(image_size, mask_size):
 
 
 def lung_roi_preprocess(image, mask, label):
+    """Crop a mask-guided lung ROI and return it with the binary label.
+
+    The crop focuses the binary classifier on lung tissue while preserving the
+    label unchanged. Empty masks fall back to a resized full image to keep the
+    tf.data pipeline resilient during exploratory runs.
+    """
     mask_2d = tf.cast(mask[:, :, 0], tf.float32)
     indices = tf.where(mask_2d > 0.5)
 
     img_shape = tf.shape(image)
 
     def crop():
+        """Crop and resize the mask bounding box when lung pixels are present.
+
+        Returns:
+            Resized lung ROI tensor.
+        """
         min_coords = tf.cast(tf.reduce_min(indices, axis=0), tf.int32)
         max_coords = tf.cast(tf.reduce_max(indices, axis=0), tf.int32)
 
@@ -166,6 +182,11 @@ def lung_roi_preprocess(image, mask, label):
         return tf.image.resize(cropped, (256, 256))
 
     def fallback():
+        """Resize the full image when no mask foreground is available.
+
+        Returns:
+            Resized full-image tensor.
+        """
         return tf.image.resize(image, (256, 256))
 
     image = tf.cond(tf.shape(indices)[0] > 0, crop, fallback)
@@ -217,10 +238,12 @@ def count_steps(dataset):
 
 
 def cleanup(model, history, callbacks_list):
-    '''
-    Explicitly clears the Keras session, deletes large objects, 
-    and forces garbage collection to prevent RAM bloat.
-    '''
+    """Release large training objects and clear the Keras backend session.
+
+    Repeated Optuna trials can leave model graphs and callbacks in memory. This
+    helper deletes those references, clears Keras state, and triggers garbage
+    collection between trials.
+    """
     try:
         if history is not None:
             del history
