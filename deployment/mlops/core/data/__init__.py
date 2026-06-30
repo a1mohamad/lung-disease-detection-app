@@ -1,3 +1,7 @@
+"""Dataset construction and TFRecord utilities."""
+
+# Dataset builders and TFRecord utilities are re-exported for task code that
+# needs a compact MLOps data API.
 from mlops.core.data.datasets import (
     build_binary_dataset,
     build_multiclass_dataset,
