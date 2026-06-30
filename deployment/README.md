@@ -1,11 +1,11 @@
 # Deployment
 
-![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)
-![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-Inference-005CED?logo=onnx&logoColor=white)
-![Postgres](https://img.shields.io/badge/Postgres-Supported-4169E1?logo=postgresql&logoColor=white)
-![SQL Server](https://img.shields.io/badge/SQL%20Server-Supported-CC2927?logo=microsoftsqlserver&logoColor=white)
-![Kafka](https://img.shields.io/badge/Kafka-Optional-231F20?logo=apachekafka&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Runtime-2496ED?logo=docker&logoColor=white)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-Inference-005CED?logo=onnx&logoColor=white)](https://onnxruntime.ai/)
+[![Postgres](https://img.shields.io/badge/Postgres-Supported-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![SQL Server](https://img.shields.io/badge/SQL%20Server-Supported-CC2927?logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
+[![Kafka](https://img.shields.io/badge/Kafka-Optional-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![Docker](https://img.shields.io/badge/Docker-Runtime-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
 Deployable application package for the lung disease detection platform. This folder contains the FastAPI runtime, model loading layer, inference pipeline, static frontend bundle, persistence, Kafka integration, Docker files, tests, and MLOps infrastructure.
 
@@ -210,6 +210,8 @@ pytest
 ---
 
 ## Docker Topologies
+
+The `Makefile` in this folder wraps the common Compose commands. Use `make runtime-up` for the slim API runtime, `make mlops-up` for DB/MLflow/Airflow, and the matching `*-down`, `*-logs`, and `*-ps` targets for operations.
 
 ### Runtime Compose
 
