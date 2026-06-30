@@ -12,6 +12,9 @@
 [![MLflow](https://img.shields.io/badge/MLflow-Model%20Tracking-0194E2)](https://mlflow.org/)
 [![Airflow](https://img.shields.io/badge/Airflow-MLOps%20Orchestration-017CEE?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supported-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Microsoft SQL Server](https://img.shields.io/badge/Microsoft%20SQL%20Server-Supported-CC2927?logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
+[![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-2088FF?logo=githubactions&logoColor=white)](https://github.com/features/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 **Live App and Deployed Services**
@@ -153,10 +156,10 @@ For a resume flagship, the important point is the **engineering completeness**: 
 
 ### Eventing and Persistence
 
-- Direct database logging to managed Postgres when Kafka is disabled.
+- Direct database logging to managed PostgreSQL when Kafka is disabled.
 - Kafka event publishing when Kafka is enabled.
 - Independent consumers for database persistence, analytics, monitoring, doctor-review queues, and notifications.
-- SQL Server and Postgres support through SQLAlchemy.
+- Microsoft SQL Server and PostgreSQL support through SQLAlchemy.
 
 ### MLOps
 
@@ -434,7 +437,7 @@ The logs endpoint is disabled unless `LOGS_API_KEY` is configured.
 |---|---:|---|
 | `MODEL_RUNTIME` | `onnx` | Selects ONNX or Keras runtime |
 | `DB_LOGGING_ENABLED` | `true` | Enables prediction database logging |
-| `DB_BACKEND` | `mssql` | Uses SQL Server or Postgres when `DATABASE_URL` is not set |
+| `DB_BACKEND` | `mssql` | Uses Microsoft SQL Server or PostgreSQL when `DATABASE_URL` is not set |
 | `DATABASE_URL` | empty | Full SQLAlchemy connection string override |
 | `KAFKA_ENABLED` | `true` | Publishes prediction events to Kafka |
 | `KAFKA_BOOTSTRAP_SERVERS` | `127.0.0.1:9092` | Kafka broker list |
@@ -616,6 +619,8 @@ This design keeps inference responsive and allows downstream workflows to evolve
 
 ## Testing and CI/CD
 
+CI/CD is implemented with **GitHub Actions** in `.github/workflows/ci.yml`.
+
 The test suite covers:
 
 - API route behavior
@@ -635,7 +640,7 @@ $env:PYTHONPATH="."
 pytest
 ```
 
-GitHub Actions performs:
+The GitHub Actions workflow performs:
 
 1. dependency installation
 2. pytest with coverage
@@ -728,6 +733,8 @@ This project demonstrates:
 - ONNX export validation
 - Dockerized deployment
 - CI/CD to Hugging Face Spaces
+- GitHub Actions workflow automation
+- Microsoft SQL Server and PostgreSQL persistence support
 - Live web app integration through GitHub Pages
 - Render PostgreSQL persistence
 - Supabase object storage for prediction artifacts
