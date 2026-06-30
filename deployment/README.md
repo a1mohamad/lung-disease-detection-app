@@ -6,6 +6,10 @@
 [![SQL Server](https://img.shields.io/badge/SQL%20Server-Supported-CC2927?logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
 [![Kafka](https://img.shields.io/badge/Kafka-Optional-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
 [![Docker](https://img.shields.io/badge/Docker-Runtime-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Hugging Face Space](https://img.shields.io/badge/Hugging%20Face-Live%20API%20Space-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api)
+[![Render PostgreSQL](https://img.shields.io/badge/Render-PostgreSQL-46E3B7?logo=render&logoColor=black)](https://render.com/docs/databases)
+[![Supabase Storage](https://img.shields.io/badge/Supabase-Image%20Storage-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/storage)
+[![GitHub Pages Frontend](https://img.shields.io/badge/GitHub%20Pages-Frontend-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/apps/lung-disease-detection/)
 
 Deployable application package for the lung disease detection platform. This folder contains the FastAPI runtime, model loading layer, inference pipeline, static frontend bundle, persistence, Kafka integration, Docker files, tests, and MLOps infrastructure.
 
@@ -16,6 +20,7 @@ Deployable application package for the lung disease detection platform. This fol
 - [Runtime Responsibilities](#runtime-responsibilities)
 - [Directory Map](#directory-map)
 - [Request Lifecycle](#request-lifecycle)
+- [Live Deployment Topology](#live-deployment-topology)
 - [Model Runtime Modes](#model-runtime-modes)
 - [API Endpoints](#api-endpoints)
 - [Configuration](#configuration)
@@ -109,6 +114,35 @@ API response
 
 ---
 
+## Live Deployment Topology
+
+The current public deployment uses managed services around the containerized API:
+
+| Component | Provider | Link / Setting |
+|---|---|---|
+| Browser frontend | GitHub Pages | [live app](https://a1mohamad.github.io/apps/lung-disease-detection/app) |
+| Runtime API | Hugging Face Spaces | [API Space](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api) |
+| Model artifacts | Hugging Face Hub | `HF_MODEL_REPO_ID=a1mohamadd/lung-disease-detection` |
+| Prediction logs | Render PostgreSQL | `DATABASE_URL` with managed Postgres TLS |
+| Generated images | Supabase Storage | `PREDICTION_STORAGE_BACKEND=supabase` |
+
+Cloud runtime flow:
+
+```text
+GitHub Pages frontend
+    |
+    v
+Hugging Face Space / FastAPI
+    |
+    |-- model artifacts from Hugging Face Hub
+    |-- normalized logs in Render PostgreSQL
+    +-- generated images in Supabase Storage
+```
+
+For this topology, set `CORS_ALLOW_ORIGINS=https://a1mohamad.github.io`, keep Supabase service-role keys only in server/Space secrets, and store the Render Postgres connection string in `DATABASE_URL`.
+
+---
+
 ## Model Runtime Modes
 
 ### ONNX Runtime
@@ -170,7 +204,9 @@ Core configuration lives in `app/configs/config.py`.
 | `LOGS_API_KEY` | empty | Enables `/logs` when set |
 | `KAFKA_ENABLED` | `true` | Enables prediction event publishing |
 | `PREDICTION_STORAGE_BACKEND` | `local` | `local` or `supabase` |
+| `SUPABASE_STORAGE_BUCKET` | `lung-detection-predictions` | Supabase bucket for generated images |
 | `HF_MODEL_DOWNLOAD_ENABLED` | `false` | Downloads model artifacts from Hugging Face |
+| `HF_MODEL_REPO_ID` | `a1mohamadd/lung-disease-detection` | Hugging Face model repository |
 
 Environment templates:
 
@@ -283,6 +319,8 @@ Supported storage backends:
 
 Important note:
 
+- The public frontend is hosted on GitHub Pages at [`/apps/lung-disease-detection/`](https://a1mohamad.github.io/apps/lung-disease-detection/).
+- The app route is available at [`/apps/lung-disease-detection/app`](https://a1mohamad.github.io/apps/lung-disease-detection/app).
 - The repository currently tracks the built bundle, not the original React source project.
 - `frontend/config.js` controls the frontend API base URL and base path behavior.
 
