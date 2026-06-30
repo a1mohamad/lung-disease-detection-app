@@ -1,9 +1,9 @@
 # Kafka Pipeline
 
-![Kafka](https://img.shields.io/badge/Kafka-Prediction%20Events-231F20?logo=apachekafka&logoColor=white)
-![JSON](https://img.shields.io/badge/Event%20Format-JSON-lightgrey)
-![Consumers](https://img.shields.io/badge/Consumers-5-blue)
-![Mode](https://img.shields.io/badge/Runtime-Optional-success)
+[![Kafka](https://img.shields.io/badge/Kafka-Prediction%20Events-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![JSON](https://img.shields.io/badge/Event%20Format-JSON-lightgrey)](https://www.json.org/json-en.html)
+[![Consumers](https://img.shields.io/badge/Consumers-5-blue)](#consumers)
+[![Mode](https://img.shields.io/badge/Runtime-Optional-success)](#purpose)
 
 Optional event-driven layer for prediction persistence, analytics, monitoring, doctor-review queues, and notifications.
 
