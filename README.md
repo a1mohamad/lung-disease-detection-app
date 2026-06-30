@@ -12,13 +12,20 @@
 [![MLflow](https://img.shields.io/badge/MLflow-Model%20Tracking-0194E2)](https://mlflow.org/)
 [![Airflow](https://img.shields.io/badge/Airflow-MLOps%20Orchestration-017CEE?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live%20Frontend-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/apps/lung-disease-detection/)
+[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+
+**Live App and Deployed Services**
+
+[![Live Web App](https://img.shields.io/badge/Live%20Web%20App-GitHub%20Pages-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/apps/lung-disease-detection/app)
 [![Hugging Face Space](https://img.shields.io/badge/Hugging%20Face-Live%20API%20Space-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api)
 [![HF Model Hub](https://img.shields.io/badge/Hugging%20Face-Model%20Artifacts-FF9D00?logo=huggingface&logoColor=black)](https://huggingface.co/a1mohamadd/lung-disease-detection)
 [![Render PostgreSQL](https://img.shields.io/badge/Render-Managed%20PostgreSQL-46E3B7?logo=render&logoColor=black)](https://render.com/docs/databases)
 [![Supabase Storage](https://img.shields.io/badge/Supabase-Object%20Storage-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/storage)
+
+**Research and Data**
+
+[![Research Lab](https://img.shields.io/badge/Research%20Lab-Project%20Page-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/research/lung-disease-detection/index.html)
 [![Kaggle Dataset](https://img.shields.io/badge/Kaggle-COVID--19%20Radiography-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/datasets/tawsifurrahman/covid19-radiography-database)
-[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 </div>
 
@@ -73,8 +80,8 @@ The public deployment is split across purpose-built services instead of one mono
 
 | Layer | Live Destination | Role |
 |---|---|---|
-| Frontend app | [GitHub Pages app](https://a1mohamad.github.io/apps/lung-disease-detection/app) | Browser UI for image upload and prediction review |
-| Frontend landing route | [GitHub Pages project page](https://a1mohamad.github.io/apps/lung-disease-detection/) | Public entry point for the web app |
+| Live web app | [GitHub Pages web app](https://a1mohamad.github.io/apps/lung-disease-detection/app) | Browser UI for image upload and prediction review |
+| Web app landing route | [GitHub Pages project page](https://a1mohamad.github.io/apps/lung-disease-detection/) | Public entry point for the web app |
 | Inference API | [Hugging Face Space](https://huggingface.co/spaces/a1mohamadd/lung-disease-detection-api) | Containerized FastAPI runtime with ONNX inference |
 | Model artifacts | [Hugging Face model repository](https://huggingface.co/a1mohamadd/lung-disease-detection) | Remote model source used by `HF_MODEL_DOWNLOAD_ENABLED=true` |
 | Prediction database | [Render PostgreSQL](https://render.com/docs/databases) | Managed Postgres backing normalized prediction logs |
@@ -85,7 +92,7 @@ The public deployment is split across purpose-built services instead of one mono
 Production-style request flow:
 
 ```text
-GitHub Pages frontend
+Live web app on GitHub Pages
     |
     v
 Hugging Face Space FastAPI runtime
@@ -130,7 +137,7 @@ For a resume flagship, the important point is the **engineering completeness**: 
 ### API and Frontend
 
 - FastAPI application with typed Pydantic request and response schemas.
-- Public frontend served through GitHub Pages, with a deployable static bundle also supported under `/ui`.
+- Public web app served through GitHub Pages, with a deployable static bundle also supported under `/ui`.
 - Health endpoint for CI/CD and cloud runtime checks.
 - Protected prediction log endpoint.
 
@@ -210,8 +217,8 @@ This makes runtime behavior auditable and avoids hard-coding model-specific deta
 
 ```text
                             +-----------------------+
-                            |  GitHub Pages UI      |
-                            |  public frontend      |
+                            |  Live Web App         |
+                            |  GitHub Pages         |
                             +-----------+-----------+
                                         |
                                         v
@@ -631,7 +638,7 @@ The deployed Space is designed to read secrets and managed-service URLs from its
 - `DATABASE_URL` points to Render PostgreSQL.
 - `HF_MODEL_DOWNLOAD_ENABLED=true` downloads model artifacts from Hugging Face Hub.
 - `PREDICTION_STORAGE_BACKEND=supabase` uploads generated images to Supabase Storage.
-- `CORS_ALLOW_ORIGINS` allows the GitHub Pages frontend origin.
+- `CORS_ALLOW_ORIGINS` allows the live web app origin on GitHub Pages.
 
 ---
 
@@ -711,7 +718,7 @@ This project demonstrates:
 - ONNX export validation
 - Dockerized deployment
 - CI/CD to Hugging Face Spaces
-- GitHub Pages frontend integration
+- Live web app integration through GitHub Pages
 - Render PostgreSQL persistence
 - Supabase object storage for prediction artifacts
 - Hugging Face Hub model delivery
