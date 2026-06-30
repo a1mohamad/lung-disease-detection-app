@@ -352,17 +352,25 @@ def build_multiclass_dataset(
     return dataset.prefetch(tf.data.AUTOTUNE)
 
 
-'''
-Professional ROI Crop instead of Hard Masking
-10% margin preserved for anatomical context.
-'''
 def lung_roi_preprocess(image, mask, label):
+    """Crop a lung-centered ROI for multiclass disease experiments.
+
+    The function uses the segmentation mask to find the lung bounding box,
+    expands it with a small context margin, and resizes the crop to the model
+    input size. If the mask is empty, the full image is resized so the dataset
+    pipeline remains robust during exploratory experiments.
+    """
     mask_2d = tf.cast(mask[:, :, 0], tf.float32)
     indices = tf.where(mask_2d > 0.5)
 
     img_shape = tf.shape(image)
 
     def crop():
+        """Crop and resize the mask bounding box when lung pixels are present.
+
+        Returns:
+            Resized lung ROI tensor.
+        """
         min_coords = tf.cast(tf.reduce_min(indices, axis=0), tf.int32)
         max_coords = tf.cast(tf.reduce_max(indices, axis=0), tf.int32)
 
@@ -391,6 +399,11 @@ def lung_roi_preprocess(image, mask, label):
         return tf.image.resize(cropped, (256, 256))
 
     def fallback():
+        """Resize the full image when no mask foreground is available.
+
+        Returns:
+            Resized full-image tensor.
+        """
         return tf.image.resize(image, (256, 256))
 
     image = tf.cond(tf.shape(indices)[0] > 0, crop, fallback)
@@ -399,9 +412,15 @@ def lung_roi_preprocess(image, mask, label):
 
 
 def get_dataset_metadata(dataset, batch_size):
-    '''
-    Professional one-pass logic to get counts, weights, and steps simultaneously.
-    '''
+    """Compute class counts, class weights, and epoch steps in one pass.
+
+    Args:
+        dataset: Batched dataset yielding ``(image_batch, one_hot_labels)``.
+        batch_size: Batch size used to convert sample counts into steps.
+
+    Returns:
+        Dictionary with ``steps``, ``weights``, and raw per-class ``counts``.
+    """
     # 1. Initialize a zero tensor for the 3 classes
     initial_state = tf.zeros((3,), dtype=tf.float32)
     
@@ -430,6 +449,12 @@ def get_dataset_metadata(dataset, batch_size):
     }
 
 def compute_per_class_metrics(model, dataset, class_names):
+    """Evaluate precision, recall, and F1 for each class in a dataset.
+
+    This helper is intended for notebook diagnostics where macro averages are
+    not enough. It materializes predictions, compares them to one-hot labels,
+    and returns one metric dictionary per class name.
+    """
     y_true = []
     y_pred = []
 
@@ -457,13 +482,33 @@ def compute_per_class_metrics(model, dataset, class_names):
 
 
 class PerClassMetricsCallback(tf.keras.callbacks.Callback):
+    """Keras callback that prints per-class metrics after selected epochs.
+
+    The callback is useful during notebook training runs because it surfaces
+    class-specific collapse early, especially for imbalanced disease labels
+    where aggregate validation accuracy can look deceptively healthy.
+    """
+
     def __init__(self, val_dataset, class_names, every_n_epochs=1):
+        """Store validation data, class labels, and reporting cadence.
+
+        Args:
+            val_dataset: Validation dataset used for per-class metrics.
+            class_names: Ordered display names for classes.
+            every_n_epochs: Metric reporting cadence.
+        """
         super().__init__()
         self.val_dataset = val_dataset
         self.class_names = class_names
         self.every_n_epochs = every_n_epochs
 
     def on_epoch_end(self, epoch, logs=None):
+        """Compute and print per-class metrics at the configured cadence.
+
+        Args:
+            epoch: Zero-based epoch index.
+            logs: Optional Keras metric dictionary.
+        """
         if (epoch + 1) % self.every_n_epochs != 0:
             return
 
@@ -481,6 +526,17 @@ class PerClassMetricsCallback(tf.keras.callbacks.Callback):
             )
 
 def unfreeze_backbone(model, backbone_name= None, unfreeze_layer= None):
+    """Freeze or selectively unfreeze a backbone for fine-tuning.
+
+    Args:
+        model: Keras model containing a named backbone layer.
+        backbone_name: Name of the backbone layer to adjust.
+        unfreeze_layer: First layer name to unfreeze. When omitted, the full
+            backbone remains frozen.
+
+    Returns:
+        The same model instance with updated trainability flags.
+    """
     base_model = model.get_layer(backbone_name)
     
     if unfreeze_layer is None:
@@ -509,6 +565,13 @@ def unfreeze_backbone(model, backbone_name= None, unfreeze_layer= None):
     return model
 
 class StrictMetricsPruningCallback(tf.keras.callbacks.Callback):
+    """Stop weak Optuna trials using F1 plus precision/recall constraints.
+
+    Optuna pruning alone can keep trials that score well on F1 while collapsing
+    precision or recall. This callback adds explicit clinical-style guardrails
+    so optimization favors balanced classifiers instead of one-sided models.
+    """
+
     def __init__(
         self,
         trial,
@@ -521,6 +584,19 @@ class StrictMetricsPruningCallback(tf.keras.callbacks.Callback):
         patience=1,
         verbose=True,
     ):
+        """Configure monitored metrics, minimum constraints, and prune cadence.
+
+        Args:
+            trial: Optuna trial object.
+            monitor_f1: Validation F1 metric name.
+            monitor_prec: Validation precision metric name.
+            monitor_rec: Validation recall metric name.
+            min_prec: Minimum allowed precision after warmup.
+            min_rec: Minimum allowed recall after warmup.
+            start_checking_at: Epoch index before pruning checks begin.
+            patience: Number of allowed constraint violations.
+            verbose: Whether to print pruning messages.
+        """
         super().__init__()
         self.trial = trial
         self.monitor_f1 = monitor_f1
@@ -538,6 +614,12 @@ class StrictMetricsPruningCallback(tf.keras.callbacks.Callback):
         self.last_metrics = {}
 
     def on_epoch_end(self, epoch, logs=None):
+        """Report F1 to Optuna and stop trials that violate quality thresholds.
+
+        Args:
+            epoch: Zero-based epoch index.
+            logs: Optional Keras metric dictionary.
+        """
         logs = logs or {}
 
         f1 = logs.get(self.monitor_f1)
@@ -590,19 +672,21 @@ class StrictMetricsPruningCallback(tf.keras.callbacks.Callback):
             self.model.stop_training = True
 
 def print_memory_usage():
-    '''
-    Helper function to see RAM usage in the console.
-    '''
+    """Print the current process resident memory usage in megabytes.
+
+    This is a notebook diagnostic helper for long Optuna sessions.
+    """
     process = psutil.Process(os.getpid())
     mem_mb = process.memory_info().rss / (1024 * 1024)
     print(f"--- Current RAM Usage: {mem_mb:.2f} MB ---")
 
 
 def cleanup(model, history, callbacks_list):
-    '''
-    Explicitly clears the Keras session, deletes large objects, 
-    and forces garbage collection to prevent RAM bloat.
-    '''
+    """Release large training objects and clear the Keras backend session.
+
+    This helper is designed for repeated notebook trials where stale graphs,
+    histories, and callbacks can accumulate in memory between Optuna runs.
+    """
     try:
         if history is not None:
             del history
@@ -625,8 +709,11 @@ def cleanup(model, history, callbacks_list):
 def penalized_f1_score(history, config, mode=None, loss=False):
 
     
-    """
-    Your exact rolling window penalized F1 score function
+    """Score a trial by F1 while penalizing unstable validation behavior.
+
+    The score rewards high validation F1 while subtracting penalties for
+    precision/recall imbalance and, optionally, train-validation loss gaps.
+    It is used as an Optuna objective component for more balanced candidates.
     """
     alpha_p = config['alpha_p']
     stage_epochs = config['stage']
@@ -673,6 +760,16 @@ def penalized_f1_score(history, config, mode=None, loss=False):
 
 
 def compile_model(model, loss, optimizer):
+    """Compile a multiclass model with accuracy, precision, recall, F1, and AUC.
+
+    Args:
+        model: Keras model to compile.
+        loss: Keras loss function.
+        optimizer: Keras optimizer.
+
+    Returns:
+        Compiled model instance.
+    """
     model.compile(
         loss=loss,
         optimizer=optimizer,
@@ -690,6 +787,12 @@ def densenet_model(
     hparams, dropout_rate,
     config=None, phase=None
 ):
+    """Build a DenseNet121 classifier head for architecture searches.
+
+    The ImageNet backbone stays frozen while Optuna varies dense-layer width,
+    depth, and dropout behavior. Batch normalization layers remain frozen to
+    preserve pretrained moving statistics during trial evaluation.
+    """
     
     img_size = MODEL_CONFIG["img_size"]
     num_classes = MODEL_CONFIG["num_classes"]
@@ -728,6 +831,12 @@ def densenet_model(
     return model
 
 def multiclass_dataset(tfrecords, config, is_training= True, image_augmentation=None):
+    """Build a multiclass disease-classification dataset from TFRecord files.
+
+    Normal samples are removed, lung ROIs are cropped from masks, raw labels are
+    remapped to contiguous disease classes, and optional batch augmentation is
+    applied only during training.
+    """
     shuffle_size = config["shuffle"]
     batch_size = config["batch_size"]
     AUTO = config["auto"]
@@ -764,7 +873,24 @@ def multiclass_dataset(tfrecords, config, is_training= True, image_augmentation=
     return dataset
 
 def make_remap_for_multiclass(num_classes):
+    """Create a mapper that converts raw disease labels into one-hot targets.
+
+    Args:
+        num_classes: Number of disease classes after filtering Normal.
+
+    Returns:
+        Mapping function for ``tf.data.Dataset.map``.
+    """
     def remap_for_multiclass(image, label):
+        """Map COVID, Viral Pneumonia, and Lung Opacity to contiguous labels.
+
+        Args:
+            image: ROI image tensor.
+            label: Raw dataset label.
+
+        Returns:
+            Tuple of image tensor and one-hot disease label.
+        """
         KEYS = tf.constant([0, 2, 3], dtype= tf.int32)
         VALUES = tf.constant([0, 1, 2], dtype= tf.int32)
         TABLE = tf.lookup.StaticHashTable(
@@ -778,11 +904,24 @@ def make_remap_for_multiclass(num_classes):
 
 
 class OverfitCallback(tf.keras.callbacks.Callback):
+    """Stop training when validation loss diverges from training loss.
+
+    This notebook callback provides a simple guardrail for architecture trials
+    where validation loss begins to drift away from training loss.
+    """
+
     def __init__(self, 
                  overfit_threshold=OVERFIT_THRESHOLD,
-                 patience=2,
-                 verbose=True,
+                patience=2,
+                verbose=True,
                 ):
+        """Configure the loss-gap threshold and patience for overfit detection.
+
+        Args:
+            overfit_threshold: Minimum validation-training loss gap to count.
+            patience: Number of consecutive gap violations allowed.
+            verbose: Whether to print stopping messages.
+        """
         self.threshold = overfit_threshold
         self.patience = patience
         self.verbose = verbose
@@ -791,13 +930,12 @@ class OverfitCallback(tf.keras.callbacks.Callback):
         self.overfit_sign = False
     
     def on_epoch_end(self, epoch, logs=None):
-        '''
-        Halts the training when the train and val loss became above 0.03
+        """Stop training when validation loss exceeds the configured gap.
 
         Args:
-            epoch (integer) - index of epoch (required but unused in the function definition below)
-            logs (dict) - metric results from the training epoch
-        '''
+            epoch: Zero-based epoch index.
+            logs: Keras metric dictionary for the epoch.
+        """
         train_loss = logs['loss']
         val_loss = logs['val_loss']
         overfit_sign = val_loss - train_loss
@@ -822,5 +960,3 @@ class OverfitCallback(tf.keras.callbacks.Callback):
                 print("\noverfitting is happening!!! so cancelling training!")
                 self.model.stop_training = True
                 return
-
-
