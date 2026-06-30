@@ -1,3 +1,5 @@
+"""CLI job for monthly model retraining, evaluation, registration, and release."""
+
 from __future__ import annotations
 
 import argparse
@@ -37,6 +39,27 @@ def run_for_model(
     register_model: bool,
     dataset_mode: str,
 ) -> None:
+    """Retrain one model spec, log results, and optionally promote a release.
+
+    This job is the production retraining unit used by Airflow. It resolves the
+    dataset split files, fine-tunes the selected model, evaluates validation and
+    optional test metrics, logs the run to MLflow, compares the candidate
+    against the current registry champion, and stages/publishes artifacts when
+    promotion rules allow it.
+
+    Args:
+        spec: Model specification selected from ``MODEL_SPECS``.
+        tfrecords_dir: Root directory containing TFRecord split files.
+        batch_size: Training and evaluation batch size.
+        epochs: Number of fine-tuning epochs.
+        max_train_batches: Optional cap for dry runs or smoke tests.
+        max_eval_batches: Optional cap for evaluation smoke tests.
+        stage: Registry stage or alias used to load the starting model.
+        experiment: MLflow experiment name.
+        val_ratio: Legacy split ratio when prepared splits are unavailable.
+        register_model: Whether to register and evaluate promotion.
+        dataset_mode: ``legacy`` or ``prepared`` dataset resolver mode.
+    """
     metadata = load_yaml(spec.metadata_path)
     model, _ = load_compiled_model(spec, stage, metadata)
 
@@ -141,6 +164,9 @@ def run_for_model(
                     spec.promotion_metric,
                     allow_promotion=False,
                 )
+                # Prepared-data releases are staged before promotion so MLflow,
+                # ONNX artifacts, and the inference model repository stay tied
+                # to the exact same training run.
                 if promotion.should_promote and dataset_mode == "prepared":
                     release = stage_model_release(
                         model=model,
@@ -213,6 +239,11 @@ def run_for_model(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for monthly retraining.
+
+    Returns:
+        Parsed command-line namespace.
+    """
     parser = argparse.ArgumentParser(description="Monthly retraining + MLflow logging.")
     parser.add_argument("--tfrecords-dir", type=str, default=str(MLOpsSettings.TFRECORDS_DIR))
     parser.add_argument("--batch-size", type=int, default=MLOpsSettings.BATCH_SIZE)
@@ -247,6 +278,24 @@ def run_pipeline(
     register_model: bool = False,
     dataset_mode: str = MLOpsSettings.RETRAIN_DATASET_MODE,
 ) -> None:
+    """Run retraining for the selected model spec.
+
+    Args:
+        tfrecords_dir: TFRecord root or prepared snapshot directory.
+        batch_size: Training/evaluation batch size.
+        epochs: Maximum number of retraining epochs.
+        max_train_batches: Optional training cap.
+        max_eval_batches: Optional evaluation cap.
+        experiment: MLflow experiment name.
+        stage: Starting model stage/alias.
+        model_name: Managed model short name.
+        val_ratio: Legacy validation split ratio.
+        register_model: Whether to register and promotion-check the candidate.
+        dataset_mode: ``legacy`` or ``prepared``.
+
+    Raises:
+        ValueError: If ``model_name`` is unknown.
+    """
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
     tfrecords_dir_path = Path(tfrecords_dir)
 
@@ -273,6 +322,11 @@ def run_pipeline(
 
 
 def main() -> None:
+    """Execute the monthly retraining CLI with manual-run protection.
+
+    Manual execution is blocked by default because production retraining should
+    normally run through Airflow with an explicit schedule and context.
+    """
     args = parse_args()
     if not os.getenv("AIRFLOW_CTX_DAG_ID") and not args.allow_manual_run:
         raise RuntimeError(
