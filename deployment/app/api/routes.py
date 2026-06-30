@@ -1,3 +1,5 @@
+"""HTTP route handlers for health checks, prediction, and prediction logs."""
+
 import logging
 import json
 from uuid import uuid4
@@ -22,6 +24,14 @@ logger = logging.getLogger(__name__)
 
 
 def _detect_input_type(req: PredictRequest) -> str:
+    """Return the request input source name used by logs and Kafka events.
+
+    Args:
+        req: Validated JSON prediction request.
+
+    Returns:
+        Source label such as ``path``, ``url``, ``base64``, or ``unknown``.
+    """
     if req.image_path:
         return "path"
     if req.image_url:
@@ -32,10 +42,19 @@ def _detect_input_type(req: PredictRequest) -> str:
 
 
 def _persist_prediction_log(*, request_id: str, input_type: str, response: dict) -> None:
-    """Write a prediction straight to the DB when Kafka is disabled.
+    """Persist a prediction directly when the Kafka pipeline is disabled.
 
     With Kafka enabled the DB consumer owns this write, so callers must gate on
     KAFKA_ENABLED to avoid double-logging the same prediction.
+
+    Args:
+        request_id: UUID generated for the API request.
+        input_type: Source category used for analytics and auditing.
+        response: API prediction response to normalize into relational tables.
+
+    Notes:
+        Persistence failures are logged and swallowed because prediction logging
+        is an operational side effect, not the primary inference result.
     """
     if SessionLocal is None:
         return
@@ -54,6 +73,15 @@ def _persist_prediction_log(*, request_id: str, input_type: str, response: dict)
 
 
 def _authorize_logs(x_api_key: str | None) -> None:
+    """Validate access to the protected prediction-log endpoint.
+
+    Args:
+        x_api_key: Value of the ``X-API-Key`` request header.
+
+    Raises:
+        ServiceError: If log access is disabled by configuration.
+        AuthError: If the provided key does not match the configured key.
+    """
     if not AppConfig.LOGS_API_KEY:
         raise ServiceError("LOGS_DISABLED", "Logs endpoint is disabled.")
     if x_api_key != AppConfig.LOGS_API_KEY:
@@ -62,11 +90,21 @@ def _authorize_logs(x_api_key: str | None) -> None:
 
 @router.get("/health", response_model=HealthResponse)
 def health():
+    """Return a lightweight liveness response for load balancers and CI checks.
+
+    Returns:
+        Service status and API version.
+    """
     return {"status": "ok", "version": "1.0.0"}
 
 
 @router.get("/", response_model=HealthResponse)
 def root():
+    """Return API identity information and basic health status.
+
+    Returns:
+        API name, status, and version.
+    """
     return {"name": "Lung Disease Detection API", "status": "ok", "version": "1.0.0"}
 
 
@@ -76,6 +114,22 @@ def predict_json(
     req: PredictRequest, 
     return_all: bool = True
     ):
+    """Run inference from a JSON image source.
+
+    The request body must contain exactly one supported source: local path,
+    remote URL, or base64 payload. The returned prediction is also emitted to
+    Kafka when enabled, otherwise it is written directly to the database when
+    database logging is enabled.
+
+    Args:
+        request: FastAPI request carrying the process-wide detector.
+        req: Validated prediction request payload.
+        return_all: Include individual ensemble-member results when true.
+
+    Returns:
+        Public prediction response with probabilities, labels, optional disease
+        subtype, and generated artifact links.
+    """
     request_id = str(uuid4())
     response = run_inference(
         detector=request.app.state.detector,
@@ -94,6 +148,8 @@ def predict_json(
             )
             publish_prediction_event(request_id=request_id, event=event)
         except Exception as exc:
+            # Kafka is an async integration boundary; inference responses should
+            # still reach the client if event publication is temporarily down.
             logger.exception("Kafka publish failed: %s", exc)
     elif AppConfig.DB_LOGGING_ENABLED:
         _persist_prediction_log(
@@ -111,6 +167,21 @@ async def predict_upload(
     file: UploadFile = File(...), 
     return_all: bool = True
     ):
+    """Run inference from a multipart image upload.
+
+    This endpoint mirrors ``/predict`` but accepts file streams instead of JSON
+    sources. It uses the same inference service and logging/eventing behavior so
+    both API styles produce the same response contract.
+
+    Args:
+        request: FastAPI request carrying the process-wide detector.
+        file: Uploaded image file stream.
+        return_all: Include individual ensemble-member results when true.
+
+    Returns:
+        Public prediction response with probabilities, labels, optional disease
+        subtype, and generated artifact links.
+    """
     request_id = str(uuid4())
     response = run_inference(
         detector=request.app.state.detector,
@@ -127,6 +198,7 @@ async def predict_upload(
             )
             publish_prediction_event(request_id=request_id, event=event)
         except Exception as exc:
+            # Keep upload inference available even when Kafka is degraded.
             logger.exception("Kafka publish failed: %s", exc)
     elif AppConfig.DB_LOGGING_ENABLED:
         _persist_prediction_log(
@@ -145,6 +217,22 @@ def get_logs(
     offset: int = 0,
     x_api_key: str | None = Header(default=None),
 ):
+    """Return paginated prediction logs for authorized operational review.
+
+    Args:
+        db: SQLAlchemy session provided by FastAPI dependency injection.
+        limit: Maximum number of records to return, constrained to 1..200.
+        offset: Number of records to skip.
+        x_api_key: API key header required for access.
+
+    Returns:
+        Normalized prediction log response including child model, disease, and
+        image-link records.
+
+    Raises:
+        AuthError: If the API key is invalid.
+        InputError: If pagination parameters are outside supported bounds.
+    """
     _authorize_logs(x_api_key)
 
     if limit < 1 or limit > 200:
