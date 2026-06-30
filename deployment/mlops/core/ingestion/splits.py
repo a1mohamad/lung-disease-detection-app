@@ -1,3 +1,5 @@
+"""Stable patient-level split assignment for reviewed-data snapshots."""
+
 from __future__ import annotations
 
 import hashlib
@@ -21,12 +23,31 @@ TARGET_RATIOS = {
 
 @dataclass
 class SplitRegistry:
+    """Persistent patient-to-split assignment registry.
+
+    The registry prevents data leakage by assigning whole patients, not single
+    images, to train/validation/test splits. Assignments are saved so future
+    reviewed snapshots keep the same patient in the same split.
+    """
+
     path: Path
     seed: str
     assignments: dict[str, dict]
 
     @classmethod
     def load(cls, path: Path, seed: str) -> "SplitRegistry":
+        """Load an existing split registry or create an empty one.
+
+        Args:
+            path: Registry JSON path.
+            seed: Split seed expected by this project configuration.
+
+        Returns:
+            Loaded or empty split registry.
+
+        Raises:
+            ValueError: If schema, seed, or assignments are invalid.
+        """
         if not path.exists():
             return cls(path=path, seed=seed, assignments={})
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -43,6 +64,18 @@ class SplitRegistry:
         return cls(path=path, seed=seed, assignments=assignments)
 
     def assign(self, records: Iterable[ReviewedRecord]) -> dict[str, str]:
+        """Assign patients to train, validation, or test splits.
+
+        Args:
+            records: Reviewed records to include in the next snapshot.
+
+        Returns:
+            Mapping from ``patient_id`` to split name.
+
+        Raises:
+            ValueError: If a patient has conflicting labels, changes labels
+            across snapshots, or has an invalid saved split.
+        """
         patients: dict[str, list[ReviewedRecord]] = defaultdict(list)
         for record in records:
             patients[record.patient_id].append(record)
@@ -58,6 +91,8 @@ class SplitRegistry:
 
         result: dict[str, str] = {}
         new_by_label: dict[str, list[str]] = defaultdict(list)
+        # Existing assignments are immutable by design; moving a patient after
+        # previous evaluation would contaminate longitudinal model comparisons.
         for patient_id, label in patient_labels.items():
             existing = self.assignments.get(patient_id)
             if existing:
@@ -81,6 +116,8 @@ class SplitRegistry:
             )
             total_after = sum(current_counts.values()) + len(new_patient_ids)
             desired = _target_counts(total_after)
+            # New patients are ordered by a seeded hash, giving deterministic
+            # splits without relying on filesystem or manifest ordering.
             ordered = sorted(
                 new_patient_ids,
                 key=lambda patient_id: _stable_order(self.seed, label, patient_id),
@@ -98,6 +135,11 @@ class SplitRegistry:
         return result
 
     def save(self) -> None:
+        """Persist split assignments atomically.
+
+        The registry is written to a temporary file first and then replaced so
+        interrupted writes do not leave a partially written JSON file.
+        """
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "schema_version": "1.0",
@@ -113,6 +155,14 @@ class SplitRegistry:
 
 
 def _target_counts(total: int) -> dict[str, int]:
+    """Return desired split counts for a label at a given total.
+
+    Args:
+        total: Number of patients for one class label after new assignments.
+
+    Returns:
+        Desired train, validation, and test patient counts.
+    """
     train = int(total * TARGET_RATIOS["train"])
     validation = int(total * TARGET_RATIOS["validation"])
     return {
@@ -123,6 +173,15 @@ def _target_counts(total: int) -> dict[str, int]:
 
 
 def _choose_split(current: Counter, desired: dict[str, int]) -> str:
+    """Choose the split with the largest current deficit.
+
+    Args:
+        current: Current split counts for one class label.
+        desired: Desired split counts for that label.
+
+    Returns:
+        Split name that best restores the target ratio.
+    """
     deficits = {split: desired[split] - current[split] for split in SPLITS}
     positive = [split for split in SPLITS if deficits[split] > 0]
     if positive:
@@ -137,5 +196,15 @@ def _choose_split(current: Counter, desired: dict[str, int]) -> str:
 
 
 def _stable_order(seed: str, label: str, patient_id: str) -> str:
+    """Return a deterministic ordering key for a patient and class label.
+
+    Args:
+        seed: Project split seed.
+        label: Patient class label.
+        patient_id: Stable patient identifier.
+
+    Returns:
+        SHA-256 hex digest used as a deterministic sort key.
+    """
     value = f"{seed}|{label}|{patient_id}".encode("utf-8")
     return hashlib.sha256(value).hexdigest()
