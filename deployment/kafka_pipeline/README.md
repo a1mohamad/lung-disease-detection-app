@@ -4,8 +4,12 @@
 [![JSON](https://img.shields.io/badge/Event%20Format-JSON-lightgrey)](https://www.json.org/json-en.html)
 [![Consumers](https://img.shields.io/badge/Consumers-5-blue)](#consumers)
 [![Mode](https://img.shields.io/badge/Runtime-Optional-success)](#purpose)
+
+**Cloud Integration Targets**
+
 [![Render PostgreSQL](https://img.shields.io/badge/Render-DB%20Consumer%20Target-46E3B7?logo=render&logoColor=black)](https://render.com/docs/databases)
 [![Supabase Storage](https://img.shields.io/badge/Supabase-Artifact%20Links-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/storage)
+[![Research Lab](https://img.shields.io/badge/Research%20Lab-Project%20Page-222222?logo=githubpages&logoColor=white)](https://a1mohamad.github.io/research/lung-disease-detection/index.html)
 
 Optional event-driven layer for prediction persistence, analytics, monitoring, doctor-review queues, and notifications.
 
@@ -37,6 +41,8 @@ The API can persist predictions directly to the database, but Kafka makes the sy
 When `KAFKA_ENABLED=true`, the API publishes one event per completed prediction. When `KAFKA_ENABLED=false`, the API can log directly to the database if `DB_LOGGING_ENABLED=true`.
 
 The current public runtime keeps Kafka optional and uses direct persistence to managed PostgreSQL. The Kafka package remains useful for local/full-stack demonstrations where prediction logging, analytics, monitoring, review queues, and notifications are split into independent consumers.
+
+The related research context is available in the [lung disease detection research lab](https://a1mohamad.github.io/research/lung-disease-detection/index.html).
 
 ---
 
