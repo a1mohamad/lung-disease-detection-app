@@ -1,5 +1,7 @@
 FROM python:3.11-slim
 
+# Runtime image defaults target a slim API deployment: ONNX inference, no Kafka,
+# no MLflow registry dependency, and optional direct DB logging.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TF_CPP_MIN_LOG_LEVEL=3 \
@@ -12,17 +14,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Install only runtime dependencies. BuildKit cache keeps repeated local builds
+# fast while still producing a clean image layer.
 COPY requirements-runtime.txt /app/requirements-runtime.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --timeout 300 --retries 10 -r /app/requirements-runtime.txt
 
+# Copy only the deployable application surface rather than research notebooks or
+# MLOps tooling. This keeps the runtime image smaller and easier to ship.
 COPY app /app/app
 COPY kafka_pipeline /app/kafka_pipeline
 COPY frontend /app/frontend
 COPY assets/*.json /app/assets/
 
+# Directories exist even when models are downloaded at startup or prediction
+# artifacts are stored remotely.
 RUN mkdir -p /app/assets/predictions /app/saved_models
 
+# PORT is used by Hugging Face Spaces and many PaaS providers.
 ENV PYTHONPATH=/app \
     PORT=8000
 
