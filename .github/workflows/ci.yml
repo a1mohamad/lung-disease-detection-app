@@ -32,6 +32,8 @@ jobs:
     env:
       # Optional integrations are disabled in CI so tests stay deterministic and
       # do not require database, Kafka, MLflow, or Hub credentials.
+      # Make deployment packages importable during pytest collection.
+      PYTHONPATH: "."
       DB_LOGGING_ENABLED: "false"
       KAFKA_ENABLED: "false"
       MLFLOW_ENABLED: "false"
