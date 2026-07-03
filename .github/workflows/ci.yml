@@ -101,7 +101,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install Hugging Face CLI
-        run: pip install huggingface-hub==1.2.1
+        # The Hub CLI imports Click directly, so pin it explicitly instead of
+        # relying on transitive dependency resolution in the runner image.
+        run: pip install huggingface-hub==1.2.1 click==8.3.1
 
       - name: Verify deployment token
         # Fail before preparing/uploading a bundle when production secrets are
