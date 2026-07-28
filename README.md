@@ -14,7 +14,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supported-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Microsoft SQL Server](https://img.shields.io/badge/Microsoft%20SQL%20Server-Supported-CC2927?logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/en-us/sql-server)
-[![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-2088FF?logo=githubactions&logoColor=white)](https://github.com/features/actions)
+[![CI](https://github.com/a1mohamad/lung-disease-detection-app/actions/workflows/ci.yml/badge.svg)](https://github.com/a1mohamad/lung-disease-detection-app/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 **Live App and Deployed Services**
@@ -619,7 +619,8 @@ This design keeps inference responsive and allows downstream workflows to evolve
 
 ## Testing and CI/CD
 
-CI/CD is implemented with **GitHub Actions** in `.github/workflows/ci.yml`.
+CI and the guarded deployment workflow are implemented with **GitHub Actions**
+in `.github/workflows/ci.yml`.
 
 The test suite covers:
 
@@ -640,13 +641,26 @@ $env:PYTHONPATH="."
 pytest
 ```
 
-The GitHub Actions workflow performs:
+For pull requests and pushes to `main`, the workflow performs:
 
 1. dependency installation
 2. pytest with coverage
 3. runtime Docker build on push
-4. Hugging Face Space deployment
-5. deployed `/health` verification
+
+The live Hugging Face Space is deployed only through a manual
+`workflow_dispatch` run. Manual deployment:
+
+1. repeats the test and Docker build checks
+2. verifies that the target Space already exists
+3. commits the runtime bundle directly to that existing Space
+4. waits for that exact commit to reach `RUNNING`
+5. verifies the deployed `/health` endpoint
+
+This manual guard is intentional for the portfolio deployment: documentation
+and research-only pushes do not rebuild or restart the live API. The upload
+also avoids the Hub repository-creation endpoint, because creating new Gradio
+or Docker Spaces now requires a paid account even though the existing
+`cpu-basic` Space continues to run without an hourly hardware charge.
 
 The deployed Space is designed to read secrets and managed-service URLs from its environment:
 
