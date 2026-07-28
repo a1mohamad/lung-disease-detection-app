@@ -2,6 +2,8 @@
 
 # Lung Disease Detection
 
+<img width="1887" height="832" alt="Screenshot (1472)" src="https://github.com/user-attachments/assets/729ad932-c1da-457d-8563-dcdecd87961c" />
+
 ### End-to-end chest X-ray analysis platform with FastAPI, ONNX inference, Kafka, MLflow, Airflow, and Hugging Face deployment
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
