@@ -1,14 +1,15 @@
-name: CI/CD
+name: CI and Manual Deployment
 
 on:
   # Pull requests must pass the lightweight Python suite before merge.
   pull_request:
     branches: [main]
-  # Pushes to main additionally build and deploy the runtime image.
+  # Pushes to main run CI and verify that the runtime image still builds.
+  # The live portfolio Space is intentionally not restarted on every commit.
   push:
     branches: [main]
-  # Manual dispatch lets maintainers verify the pipeline after secret or
-  # infrastructure changes without creating a dummy commit.
+  # Deployments are manual because every Space commit rebuilds and restarts the
+  # live Docker container.
   workflow_dispatch:
 
 permissions:
@@ -17,10 +18,10 @@ permissions:
   contents: read
 
 concurrency:
-  # New commits supersede older CI runs for the same branch, saving minutes on
-  # repeated pushes while keeping main protected by the latest result.
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Push/PR runs may supersede older runs. Manual deployments use a separate
+  # group and queue instead of being cancelled halfway through a Space rebuild.
+  group: pipeline-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
   tests:
@@ -66,7 +67,7 @@ jobs:
 
   docker-build:
     name: Runtime Docker build
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
     needs: tests
     runs-on: ubuntu-latest
 
@@ -78,8 +79,8 @@ jobs:
         run: docker build --file deployment/Dockerfile.runtime --tag lung-detection-runtime:${{ github.sha }} deployment
 
   deploy-space:
-    name: Deploy Hugging Face Space
-    if: github.event_name == 'push'
+    name: Deploy Hugging Face Space (manual)
+    if: github.event_name == 'workflow_dispatch'
     needs: [tests, docker-build]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -100,10 +101,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Hugging Face CLI
-        # The Hub CLI imports Click directly, so pin it explicitly instead of
-        # relying on transitive dependency resolution in the runner image.
-        run: pip install huggingface-hub==1.2.1 click==8.3.1
+      - name: Install Hugging Face Hub client
+        run: pip install huggingface-hub==1.24.0
 
       - name: Verify deployment token
         # Fail before preparing/uploading a bundle when production secrets are
@@ -126,24 +125,100 @@ jobs:
           cp -R deployment/frontend space-bundle/frontend
           cp deployment/assets/*.json space-bundle/assets/
 
-      - name: Upload runtime to Hugging Face Space
+      - name: Verify existing Space
+        # Do not call create_repo here. New Docker Spaces require a paid plan,
+        # while this deployment targets the already-existing portfolio Space.
         run: |
-          hf upload "$HF_SPACE_ID" space-bundle . \
-            --repo-type space \
-            --commit-message "Deploy GitHub commit $GITHUB_SHA"
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          repo_id = os.environ["HF_SPACE_ID"]
+          info = HfApi(token=os.environ["HF_TOKEN"]).repo_info(
+              repo_id=repo_id,
+              repo_type="space",
+          )
+          if info.id != repo_id:
+              raise RuntimeError(
+                  f"Resolved unexpected Space: expected {repo_id}, received {info.id}"
+              )
+          print(f"Verified existing Space: {info.id}")
+          PY
+
+      - name: Commit runtime to existing Hugging Face Space
+        id: upload
+        # HfApi.upload_folder assumes the repository already exists and commits
+        # directly to it. Unlike `hf upload`, it does not first call create_repo,
+        # which Hugging Face now rejects for free Docker Space creation.
+        run: |
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          result = HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+              repo_id=os.environ["HF_SPACE_ID"],
+              repo_type="space",
+              revision="main",
+              folder_path="space-bundle",
+              path_in_repo=".",
+              commit_message=f"Deploy GitHub commit {os.environ['GITHUB_SHA']}",
+          )
+          print(result)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"commit_sha={result.oid}\n")
+          PY
 
       - name: Wait for deployed API
-        # Hugging Face Spaces rebuild asynchronously after upload; poll the
-        # public health endpoint until the new container is serving traffic.
+        # A plain health request can hit the previous container while the new
+        # build is queued. Wait until the runtime reports the exact uploaded
+        # commit, then verify the API itself.
+        env:
+          HF_DEPLOY_COMMIT: ${{ steps.upload.outputs.commit_sha }}
         run: |
-          for attempt in $(seq 1 45); do
-            if curl --fail --silent --show-error "$SPACE_HEALTH_URL"; then
-              echo
-              echo "Space health check passed."
-              exit 0
-            fi
-            echo "Waiting for Space rebuild ($attempt/45)..."
-            sleep 20
-          done
-          echo "Space did not become healthy before the timeout."
-          exit 1
+          python - <<'PY'
+          import json
+          import os
+          import time
+          from urllib.error import URLError
+          from urllib.request import urlopen
+
+          repo_id = os.environ["HF_SPACE_ID"]
+          expected_sha = os.environ["HF_DEPLOY_COMMIT"]
+          health_url = os.environ["SPACE_HEALTH_URL"]
+          info_url = f"https://huggingface.co/api/spaces/{repo_id}"
+          failed_stages = {"BUILD_ERROR", "RUNTIME_ERROR", "CONFIG_ERROR"}
+
+          for attempt in range(1, 46):
+              try:
+                  with urlopen(info_url, timeout=15) as response:
+                      info = json.load(response)
+                  runtime = info.get("runtime") or {}
+                  stage = runtime.get("stage", "UNKNOWN")
+                  runtime_sha = runtime.get("sha", "")
+                  print(
+                      f"Space attempt {attempt}/45: "
+                      f"stage={stage} runtime_sha={runtime_sha or 'none'}"
+                  )
+
+                  if runtime_sha == expected_sha and stage in failed_stages:
+                      raise RuntimeError(
+                          f"Space failed to deploy commit {expected_sha}: stage={stage}"
+                      )
+
+                  if runtime_sha == expected_sha and stage == "RUNNING":
+                      with urlopen(health_url, timeout=15) as response:
+                          if response.status == 200:
+                              print(
+                                  "Space is running the uploaded commit and "
+                                  "the health check passed."
+                              )
+                              break
+              except URLError as exc:
+                  print(f"Space status request failed temporarily: {exc}")
+
+              time.sleep(20)
+          else:
+              raise TimeoutError(
+                  f"Space did not run commit {expected_sha} before the timeout."
+              )
+          PY
